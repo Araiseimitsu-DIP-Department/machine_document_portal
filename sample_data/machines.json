@@ -1,0 +1,74 @@
+{
+  "last_updated_at": "2026-07-15T14:20:00+09:00",
+  "groups": [
+    {"name": "A", "count": 6, "color": "#1e88e5"},
+    {"name": "B", "count": 5, "color": "#008c9e"},
+    {"name": "C", "count": 12, "color": "#6473d9"},
+    {"name": "D", "count": 12, "color": "#8b63c7"},
+    {"name": "E", "count": 14, "color": "#d17b25"},
+    {"name": "F", "count": 14, "color": "#3b8d69"}
+  ],
+  "defaults": {
+    "part_number": "MDP-{group}{number:02d}-01",
+    "product_name": "精密加工部品 {group}-{number}",
+    "production_status": "生産中",
+    "inspection": {
+      "status": "found",
+      "url": "https://example.com/?document=inspection-{group}-{number}"
+    },
+    "drawing": {
+      "status": "found",
+      "url": "https://example.com/?document=drawing-{group}-{number}"
+    }
+  },
+  "overrides": {
+    "A-1": {
+      "part_number": "AX-1200-01",
+      "product_name": "シャフトケース",
+      "inspection": {"status": "found", "url": "https://example.com/?document=inspection-AX-1200-01"},
+      "drawing": {"status": "found", "url": "https://example.com/?document=drawing-AX-1200-01"}
+    },
+    "A-2": {
+      "part_number": "BX_2040-R2",
+      "product_name": "バルブボディ",
+      "inspection": {"status": "not_found", "url": null}
+    },
+    "A-3": {
+      "part_number": "CX-3150-03",
+      "product_name": "ガイドブッシュ",
+      "drawing": {"status": "not_found", "url": null}
+    },
+    "A-4": {
+      "part_number": "DX-4088",
+      "product_name": "コレットホルダー",
+      "inspection": {"status": "not_found", "url": null},
+      "drawing": {"status": "not_found", "url": null}
+    },
+    "A-5": {
+      "part_number": null,
+      "product_name": null,
+      "production_status": null
+    },
+    "A-6": {
+      "part_number": "EX-5090-02",
+      "product_name": "スピンドルナット",
+      "drawing": {"status": "multiple", "url": null}
+    },
+    "B-1": {
+      "part_number": "FX-6105-R1",
+      "product_name": "ジョイント",
+      "inspection": {"status": "auth_error", "url": null}
+    },
+    "B-2": {
+      "part_number": "GX-7200",
+      "product_name": "ピストンケース",
+      "drawing": {"status": "api_error", "url": null}
+    },
+    "B-3": {
+      "part_number": "HX-8300-04",
+      "product_name": "シリンダーヘッド",
+      "stale": true,
+      "updated_at": "2026-07-15T11:05:00+09:00"
+    }
+  }
+}

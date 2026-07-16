@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% macro document_control(machine, document, document_name) %}
+  {% if not machine.has_production %}
+    {% set state_text = '対象なし' %}
+  {% else %}
+    {% set state_text = status_labels[document.status] %}
+  {% endif %}
+  <div class="machine-doc-cell">
+    {% if machine.has_production and document.available %}
+    <a
+      class="btn machine-doc-button status-found"
+      href="{{ document.url }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="{{ machine.machine_id }}の{{ document_name }}を開く"
+      title="{{ document_name }}：{{ state_text }}"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6M8 13h8M8 17h5"/>
+      </svg>
+    </a>
+    {% else %}
+    <button
+      class="btn machine-doc-button status-{{ document.status }}"
+      type="button"
+      disabled
+      aria-label="{{ machine.machine_id }}の{{ document_name }}：{{ state_text }}"
+      title="{{ document_name }}：{{ state_text }}"
+    >
+      <span aria-hidden="true">
+        {% if not machine.has_production %}—
+        {% elif document.status == 'not_found' %}×
+        {% elif document.status == 'multiple' %}複
+        {% elif document.status in ['auth_error', 'permission_error', 'api_error'] %}!
+        {% else %}?
+        {% endif %}
+      </span>
+    </button>
+    {% endif %}
+    <span class="sr-only">{{ document_name }}：{{ state_text }}</span>
+  </div>
+{% endmacro %}
+
+{% block title %}号機一覧 | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page page-overview">
+  <header class="page-header">
+    <div>
+      <p class="page-eyebrow">MACHINE DOCUMENT PORTAL</p>
+      <h1 class="page-title">稼働中工程内検査シート</h1>
+      <p class="page-description">全号機を見渡し、必要な資料を開いてください。</p>
+    </div>
+    <div class="page-actions">
+      <div class="updated-summary">
+        <span class="updated-label">最終更新</span>
+        <time data-dashboard-updated>
+          {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at.strftime('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
+        </time>
+      </div>
+      <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 4v4h-4"/></svg>
+        <span>最新情報に更新</span>
+      </button>
+    </div>
+  </header>
+
+  {% if dashboard.notice %}
+  <div class="notice {% if dashboard.degraded %}notice-danger{% else %}notice-info{% endif %}" role="status">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <span>{{ dashboard.notice }}</span>
+  </div>
+  {% endif %}
+
+  {% if machine_groups %}
+  <div class="overview-board" aria-label="全号機一覧">
+    {% for lane in overview_lanes %}
+    <div class="overview-lane">
+    {% for group_name, machines in lane %}
+    <section class="group-column" style="--group-color: {{ machines[0].group_color }}" aria-labelledby="group-{{ group_name }}">
+      <header class="group-column-header">
+        <div class="group-title-wrap">
+          <span class="group-letter" aria-hidden="true">{{ group_name }}</span>
+          <div>
+            <h2 class="group-title" id="group-{{ group_name }}">{{ group_name }}グループ</h2>
+            <p>{{ machines|length }}台</p>
+          </div>
+        </div>
+        <span class="document-column-label">検査シート</span>
+        <span class="document-column-label">加工図面</span>
+      </header>
+
+      <div class="machine-stack">
+        {% for machine in machines %}
+        <article class="machine-row {% if not machine.has_production %}is-idle{% endif %} {% if machine.stale %}is-stale{% endif %}">
+          <div class="machine-row-main" title="{{ machine.product_name or '生産中品番なし' }}｜更新 {{ machine.updated_at.strftime('%m/%d %H:%M') if machine.updated_at else '未取得' }}">
+            <div class="machine-row-heading">
+              <h3>{{ machine.machine_id }}</h3>
+              {% if machine.stale %}
+              <span class="badge badge-warning">前回</span>
+              {% elif machine.has_production %}
+              <span class="badge badge-success">{{ machine.production_status or '生産中' }}</span>
+              {% else %}
+              <span class="badge badge-neutral">停止</span>
+              {% endif %}
+            </div>
+
+            {% if machine.has_production %}
+            <p class="machine-part-number">{{ machine.part_number }}</p>
+            <p class="machine-product-name">{{ machine.product_name or '品名未登録' }}</p>
+            {% else %}
+            <p class="machine-no-production">生産中品番なし</p>
+            {% endif %}
+
+            <time class="machine-updated-at" datetime="{{ machine.updated_at.isoformat() if machine.updated_at else '' }}">
+              {{ machine.updated_at.strftime('%H:%M') if machine.updated_at else '未取得' }}
+            </time>
+          </div>
+
+          {{ document_control(machine, machine.inspection, '工程内検査シート') }}
+          {{ document_control(machine, machine.drawing, '加工図') }}
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="overview-legend" aria-label="資料状態の凡例">
+    <span><strong>資料アイコン</strong> 利用できます</span>
+    <span><strong>×</strong> 見つかりません</span>
+    <span><strong>複</strong> 候補が複数あります</span>
+    <span><strong>!</strong> 最新情報を取得できません</span>
+    <span><strong>—</strong> 生産中品番なし</span>
+  </div>
+  {% else %}
+  <div class="empty-dashboard" role="status">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
+    <h2>表示できる号機がありません</h2>
+    <p>号機設定または外部サービス設定を確認してください。</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
