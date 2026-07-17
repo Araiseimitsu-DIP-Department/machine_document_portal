@@ -32,6 +32,12 @@ def test_unsafe_document_url_is_not_exposed() -> None:
     assert state.url is None
 
 
+def test_safe_local_document_url_is_exposed() -> None:
+    state = DocumentState(status="found", url="/api/drawings/A-1")
+    assert state.status == "found"
+    assert state.url == "/api/drawings/A-1"
+
+
 def test_missing_database_configuration_is_a_friendly_degraded_result() -> None:
     settings = Settings(
         use_sample_data=False,

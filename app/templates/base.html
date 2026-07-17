@@ -39,5 +39,19 @@
     </div>
   </div>
   <div class="toast" role="status" aria-live="polite" aria-atomic="true" data-toast hidden></div>
+  <dialog class="drawing-preview-dialog" aria-label="加工図プレビュー" data-drawing-preview-dialog>
+    <div class="drawing-preview-header">
+      <strong data-drawing-preview-title>加工図</strong>
+      <div class="drawing-preview-actions">
+        <button class="icon-button" type="button" aria-label="画像を縮小" title="縮小" data-drawing-preview-zoom-out>−</button>
+        <button class="icon-button" type="button" aria-label="画像を等倍に戻す" title="等倍に戻す" data-drawing-preview-zoom-reset>100%</button>
+        <button class="icon-button" type="button" aria-label="画像を拡大" title="拡大" data-drawing-preview-zoom-in>＋</button>
+        <button class="icon-button" type="button" aria-label="加工図プレビューを閉じる" title="閉じる" data-drawing-preview-close>×</button>
+      </div>
+    </div>
+    <div class="drawing-preview-body">
+      <img alt="加工図プレビュー" data-drawing-preview-image>
+    </div>
+  </dialog>
 </body>
 </html>

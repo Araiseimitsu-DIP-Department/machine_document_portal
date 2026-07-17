@@ -416,6 +416,37 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
 }
 .toast-error { border-color: rgba(239, 68, 68, 0.25); background: #fff4f4; color: var(--color-danger); }
 
+.drawing-preview-dialog {
+  width: min(96vw, 90rem);
+  max-width: none;
+  height: min(94vh, 62rem);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 1.5rem 4rem rgba(34, 62, 88, 0.28);
+}
+.drawing-preview-dialog::backdrop { background: rgba(24, 39, 55, 0.58); }
+.drawing-preview-header {
+  display: flex;
+  min-height: 3.2rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem 0.45rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.drawing-preview-actions { display: flex; align-items: center; gap: 0.2rem; }
+.drawing-preview-actions .icon-button { width: 2.25rem; height: 2.25rem; font-weight: 700; }
+.drawing-preview-actions [data-drawing-preview-zoom-reset] { width: 3.3rem; font-size: 0.68rem; }
+.drawing-preview-body {
+  height: calc(100% - 3.2rem);
+  overflow: auto;
+  background: #525a63;
+  text-align: center;
+}
+.drawing-preview-body img { display: block; width: 100%; height: auto; max-width: none; }
+
 .sidebar-collapsed .sidebar { width: var(--sidebar-collapsed-width); }
 .sidebar-collapsed .app-content { margin-left: var(--sidebar-collapsed-width); }
 .sidebar-collapsed .brand-logo, .sidebar-collapsed .nav-label { display: none; }

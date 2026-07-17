@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     google_spreadsheet_product_name_column: str = "I"
     google_spreadsheet_status_column: str = "A"
     google_spreadsheet_active_status: str = "稼働中"
-    google_drive_drawing_folder_id: str | None = None
+    nas_drawing_directory: Path | None = None
 
     sharepoint_site_id: str | None = None
     sharepoint_drive_id: str | None = None

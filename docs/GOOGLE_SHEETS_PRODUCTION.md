@@ -24,6 +24,14 @@ Use machine IDs in the `group-number` form (for example, `A-1`) for the expected
 
 Never commit the key file. The `secrets/` directory is ignored by Git.
 
+## NAS drawings
+
+Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The application looks for an exact filename match with the part number in column H, adding `.pdf` when the part number has no extension. When the user selects the drawing button, the application renders the first page as a JPEG preview inside the dashboard; the PDF and NAS path are not exposed to the browser. Generated previews are cached while the application runs.
+
+The in-app first-page preview is the current temporary display mode. Opening the original PDF in a separate tab, split-screen display with the inspection sheet, and multi-page navigation can be introduced later without changing the NAS lookup rule.
+
+The account that starts the application must have read permission for the NAS directory.
+
 ## Production environment file
 
 Create the ignored `.env` file on the application host. Substitute the key path and spreadsheet ID. The spreadsheet ID is the portion between `/d/` and `/edit` in its URL.
@@ -42,6 +50,7 @@ GOOGLE_SPREADSHEET_STATUS_COLUMN=A
 GOOGLE_SPREADSHEET_MACHINE_COLUMN=D
 GOOGLE_SPREADSHEET_PART_NUMBER_COLUMN=H
 GOOGLE_SPREADSHEET_PRODUCT_NAME_COLUMN=I
+NAS_DRAWING_DIRECTORY=\\server\share\drawings
 AUTO_REFRESH_SECONDS=300
 ```
 
@@ -51,4 +60,4 @@ AUTO_REFRESH_SECONDS=300
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Start the application. It reads Google Sheets on startup, and the refresh button (or `POST /api/refresh`) fetches the latest data again. While the dashboard is open, it also refreshes automatically at the number of seconds set by `AUTO_REFRESH_SECONDS`; set it to `0` to disable automatic refresh. Restart the application after editing `.env` so the new value is loaded. The service account has read-only access and the application never writes to the spreadsheet.
+Start the application. It reads Google Sheets on startup, and the refresh button (or `POST /api/refresh`) fetches the latest data again. The application performs one scheduled Google Sheets synchronization at the number of seconds set by `AUTO_REFRESH_SECONDS`, regardless of how many dashboards are open; browsers then reload the in-memory result. Set it to `0` to disable automatic refresh. Restart the application after editing `.env` so the new value is loaded. The service account has read-only access and the application never writes to the spreadsheet.

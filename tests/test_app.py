@@ -37,6 +37,8 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert 'class="badge badge-finished">生産終了</span>' in response.text
     assert 'class="badge badge-setup">セット中</span>' in response.text
     assert "machine-updated-at" not in response.text
+    assert 'aria-label="A-1_AX-1200-01_加工図面"' in response.text
+    assert "data-drawing-preview" in response.text
     assert 'aria-label="全号機一覧"' in response.text
     assert response.text.count(">検査シート</span>") == 6
     assert response.text.count(">加工図面</span>") == 6

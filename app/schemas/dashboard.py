@@ -22,7 +22,13 @@ class DocumentState(BaseModel):
 
     @model_validator(mode="after")
     def validate_external_url(self) -> "DocumentState":
-        if self.url and urlsplit(self.url).scheme.lower() not in {"http", "https"}:
+        if not self.url:
+            return self
+        parsed_url = urlsplit(self.url)
+        is_safe_local_url = (
+            not parsed_url.scheme and not parsed_url.netloc and self.url.startswith("/")
+        )
+        if parsed_url.scheme.lower() not in {"http", "https"} and not is_safe_local_url:
             self.url = None
             if self.status == "found":
                 self.status = "not_checked"

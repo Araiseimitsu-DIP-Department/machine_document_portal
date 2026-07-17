@@ -16,8 +16,11 @@ class FakeGateway(SpreadsheetGateway):
         ]
 
 
-def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet() -> None:
-    settings = Settings(persistence_mode="memory", use_sample_data=False)
+def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> None:
+    (tmp_path / "ab-100.pdf").write_bytes(b"%PDF-1.4\n")
+    settings = Settings(
+        persistence_mode="memory", use_sample_data=False, nas_drawing_directory=tmp_path
+    )
     store = MemoryDashboardStore(settings)
 
     result = GoogleSheetsMemorySyncService(
@@ -34,8 +37,11 @@ def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet() -> None:
     assert len(dashboard.machines) == 2
     assert a1.part_number == "ab-100"
     assert a1.normalized_part_number == "AB-100"
+    assert a1.drawing.status == "found"
+    assert a1.drawing.url == "/api/drawings/A-1/preview"
     assert g2.part_number == "ab-200"
     assert g2.group_name == "G"
+    assert g2.drawing.status == "not_found"
     assert dashboard.notice is None
 
 
