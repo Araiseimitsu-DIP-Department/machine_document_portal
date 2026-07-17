@@ -47,7 +47,7 @@ class MemoryDashboardStore:
                 machines=sort_machines(prepared_machines),
                 last_updated_at=updated_at or datetime.now(timezone.utc),
                 source_label="メモリ",
-                notice=notice or self._memory_notice(),
+                notice=notice,
             )
             self._index_document_cache(self._dashboard.machines)
             return self._dashboard.model_copy(deep=True)
@@ -56,6 +56,16 @@ class MemoryDashboardStore:
         with self._lock:
             self._dashboard = self._load_sample_dashboard()
             self._index_document_cache(self._dashboard.machines, clear=True)
+            return self._dashboard.model_copy(deep=True)
+
+    def set_notice(self, notice: str, *, degraded: bool = True) -> DashboardData:
+        """Show an operational warning without discarding the last dashboard."""
+
+        with self._lock:
+            if self._dashboard is None:
+                self._dashboard = self._load_initial_dashboard()
+            self._dashboard.notice = notice
+            self._dashboard.degraded = degraded
             return self._dashboard.model_copy(deep=True)
 
     def cache_documents(
@@ -100,10 +110,6 @@ class MemoryDashboardStore:
         return DashboardData(
             machines=[],
             source_label="メモリ",
-            notice=(
-                "メモリ運用中です。外部サービスから取得したデータは、"
-                "アプリを再起動するとリセットされます。"
-            ),
         )
 
     def _load_sample_dashboard(self) -> DashboardData:
@@ -114,10 +120,6 @@ class MemoryDashboardStore:
             "アプリを再起動すると状態はリセットされます。"
         )
         return dashboard
-
-    @staticmethod
-    def _memory_notice() -> str:
-        return "メモリ運用中です。アプリを再起動すると取得状態はリセットされます。"
 
     def _apply_cached_documents(self, machines: list[MachineCard]) -> list[MachineCard]:
         prepared: list[MachineCard] = []

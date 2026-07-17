@@ -65,7 +65,7 @@ class SampleDataService:
                         normalized_part_number=normalize_part_number(part_number),
                         product_name=resolved("product_name"),
                         production_status=resolved(
-                            "production_status", "生産中" if part_number else None
+                            "production_status", "稼働中" if part_number else None
                         ),
                         inspection=DocumentState(**inspection_data) if part_number else DocumentState(),
                         drawing=DocumentState(**drawing_data) if part_number else DocumentState(),

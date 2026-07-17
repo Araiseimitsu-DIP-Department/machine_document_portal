@@ -17,5 +17,5 @@ def test_machine_ids_are_sorted_numerically() -> None:
 
 
 def test_groups_are_sorted_before_machine_number() -> None:
-    values = [machine("B-1"), machine("A-6"), machine("A-1")]
-    assert [item.machine_id for item in sort_machines(values)] == ["A-1", "A-6", "B-1"]
+    values = [machine("B-1"), machine("A-5"), machine("A-1")]
+    assert [item.machine_id for item in sort_machines(values)] == ["A-1", "A-5", "B-1"]

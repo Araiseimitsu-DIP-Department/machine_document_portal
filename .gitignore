@@ -4,6 +4,17 @@
 *credentials*.json
 *client_secret*.json
 *microsoft*secret*
+# Service-account keys, OAuth tokens, and private certificates
+*service*account*.json
+aptest-384703-24764f69b34f.json
+*oauth*token*.json
+token.json
+token.pickle
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
 logs/
 __pycache__/
 *.py[cod]

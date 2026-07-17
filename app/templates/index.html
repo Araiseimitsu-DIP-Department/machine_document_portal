@@ -57,7 +57,7 @@
       <div class="updated-summary">
         <span class="updated-label">最終更新</span>
         <time data-dashboard-updated>
-          {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at.strftime('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
+          {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at|format_jst('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
         </time>
       </div>
       <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
@@ -95,15 +95,23 @@
       <div class="machine-stack">
         {% for machine in machines %}
         <article class="machine-row {% if not machine.has_production %}is-idle{% endif %} {% if machine.stale %}is-stale{% endif %}">
-          <div class="machine-row-main" title="{{ machine.product_name or '生産中品番なし' }}｜更新 {{ machine.updated_at.strftime('%m/%d %H:%M') if machine.updated_at else '未取得' }}">
+          <div class="machine-row-main" title="{{ machine.product_name or '生産中品番なし' }}">
             <div class="machine-row-heading">
               <h3>{{ machine.machine_id }}</h3>
               {% if machine.stale %}
               <span class="badge badge-warning">前回</span>
-              {% elif machine.has_production %}
-              <span class="badge badge-success">{{ machine.production_status or '生産中' }}</span>
+              {% elif machine.production_status == '稼働中' %}
+              <span class="badge badge-running">{{ machine.production_status }}</span>
+              {% elif machine.production_status == '停止中' %}
+              <span class="badge badge-stopped">{{ machine.production_status }}</span>
+              {% elif machine.production_status == '生産終了' %}
+              <span class="badge badge-finished">{{ machine.production_status }}</span>
+              {% elif machine.production_status == 'セット中' %}
+              <span class="badge badge-setup">{{ machine.production_status }}</span>
+              {% elif machine.production_status %}
+              <span class="badge badge-neutral">{{ machine.production_status }}</span>
               {% else %}
-              <span class="badge badge-neutral">停止</span>
+              <span class="badge badge-neutral">未設定</span>
               {% endif %}
             </div>
 
@@ -113,10 +121,6 @@
             {% else %}
             <p class="machine-no-production">生産中品番なし</p>
             {% endif %}
-
-            <time class="machine-updated-at" datetime="{{ machine.updated_at.isoformat() if machine.updated_at else '' }}">
-              {{ machine.updated_at.strftime('%H:%M') if machine.updated_at else '未取得' }}
-            </time>
           </div>
 
           {{ document_control(machine, machine.inspection, '工程内検査シート') }}

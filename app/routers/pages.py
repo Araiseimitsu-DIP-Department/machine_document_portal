@@ -10,10 +10,12 @@ from app.dependencies import DatabaseSessionDependency, SettingsDependency
 from app.schemas.dashboard import MachineCard
 from app.services.memory_store import get_memory_store
 from app.services.production_service import ProductionService
+from app.utils.time_zone import format_jst
 
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory=PROJECT_ROOT / "app" / "templates")
+templates.env.filters["format_jst"] = format_jst
 
 
 STATUS_LABELS = {

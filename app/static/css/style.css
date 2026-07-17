@@ -288,7 +288,7 @@ svg {
 .machine-row.is-stale { background: var(--color-warning-soft); }
 .machine-row.is-idle { background: #fbfcfd; }
 
-.machine-row-main { position: relative; min-width: 0; padding-right: 2.65rem; }
+.machine-row-main { min-width: 0; }
 .machine-row-heading {
   display: flex;
   align-items: center;
@@ -315,6 +315,10 @@ svg {
 .badge-success { background: var(--color-success-soft); color: var(--color-success); }
 .badge-warning { background: var(--color-warning-soft); color: var(--color-warning); }
 .badge-neutral { background: var(--color-surface-tertiary); color: var(--color-text-secondary); }
+.badge-running { background: #d9f2bd; color: #127646; }
+.badge-stopped { background: #ffc9c5; color: #c5221f; }
+.badge-finished { background: #e8d3fa; color: #7b3fa0; }
+.badge-setup { background: #c7e7ff; color: #126ba5; }
 
 .machine-part-number {
   overflow: hidden;
@@ -340,15 +344,6 @@ svg {
   margin-top: 0.3rem;
   font-weight: 600;
 }
-.machine-updated-at {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  color: var(--color-text-tertiary);
-  font-size: 0.62rem;
-  font-variant-numeric: tabular-nums;
-}
-
 .machine-doc-cell { display: flex; min-width: 0; align-items: center; justify-content: center; }
 .machine-doc-button {
   width: 2.75rem;
@@ -446,11 +441,6 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
 
 @media (max-width: 1699px) {
   .overview-board { grid-template-columns: repeat(3, minmax(15rem, 1fr)); }
-}
-
-@media (max-width: 1700px) {
-  .machine-row-main { padding-right: 0; }
-  .machine-updated-at { display: none; }
 }
 
 @media (max-width: 1050px) {

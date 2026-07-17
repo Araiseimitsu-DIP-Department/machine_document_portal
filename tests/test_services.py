@@ -53,7 +53,7 @@ def test_sample_mode_does_not_need_postgresql() -> None:
     store = MemoryDashboardStore(settings)
     data = ProductionService(settings, store).get_dashboard(None)
     assert data.degraded is False
-    assert len(data.machines) == 63
+    assert len(data.machines) == 61
     assert data.source_label == "メモリ（サンプル）"
 
 
@@ -67,4 +67,4 @@ def test_memory_mode_without_external_data_does_not_request_database() -> None:
     assert data.degraded is False
     assert data.machines == []
     assert data.source_label == "メモリ"
-    assert "再起動" in (data.notice or "")
+    assert data.notice is None

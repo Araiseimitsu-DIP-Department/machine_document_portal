@@ -34,12 +34,11 @@ class Settings(BaseSettings):
     google_spreadsheet_id: str | None = None
     google_spreadsheet_sheet_name: str | None = None
     google_spreadsheet_start_row: int = Field(default=2, ge=1)
-    google_spreadsheet_machine_column: str = "A"
-    google_spreadsheet_part_number_column: str = "B"
-    google_spreadsheet_product_name_column: str = "C"
-    google_spreadsheet_status_column: str = "D"
-    google_spreadsheet_updated_at_column: str = "E"
-    google_spreadsheet_active_status: str = "生産中"
+    google_spreadsheet_machine_column: str = "D"
+    google_spreadsheet_part_number_column: str = "H"
+    google_spreadsheet_product_name_column: str = "I"
+    google_spreadsheet_status_column: str = "A"
+    google_spreadsheet_active_status: str = "稼働中"
     google_drive_drawing_folder_id: str | None = None
 
     sharepoint_site_id: str | None = None
