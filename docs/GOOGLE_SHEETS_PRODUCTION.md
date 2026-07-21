@@ -26,11 +26,13 @@ Never commit the key file. The `secrets/` directory is ignored by Git.
 
 ## NAS drawings
 
-Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The application looks for an exact filename match with the part number in column H, adding `.pdf` when the part number has no extension. When the user selects the drawing button, the application renders the first page as a JPEG preview inside the dashboard; the PDF and NAS path are not exposed to the browser. Generated previews are cached while the application runs.
+Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The application looks for an exact filename match with the part number in column H, adding `.pdf` when the part number has no extension. When the user selects the drawing button, the application opens a dedicated browser tab and renders the first page as a JPEG preview; the PDF and NAS path are not exposed to the browser. Generated previews are cached while the application runs.
 
-The in-app first-page preview is the current temporary display mode. Opening the original PDF in a separate tab, split-screen display with the inspection sheet, and multi-page navigation can be introduced later without changing the NAS lookup rule.
+The separate-tab first-page preview is the current display mode. Split-screen display with the inspection sheet and multi-page navigation can be introduced later without changing the NAS lookup rule.
 
 The account that starts the application must have read permission for the NAS directory.
+
+For the SharePoint inspection-sheet setup, see [SHAREPOINT_INSPECTION_SHEETS.md](SHAREPOINT_INSPECTION_SHEETS.md).
 
 ## Production environment file
 

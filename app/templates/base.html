@@ -24,6 +24,30 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>
           <span class="nav-label">号機一覧</span>
         </a>
+        <div class="external-link-group">
+          <p class="external-links-heading">外部リンク</p>
+        {% if sharepoint_process_inspection_url %}
+        <a class="nav-item nav-item-external" href="{{ sharepoint_process_inspection_url }}" target="_blank" rel="noopener noreferrer" title="工程内検査シートを別タブで開く">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m14 16 2 2 4-4"/></svg>
+          <span class="nav-label">工程内検査シート</span>
+          <span class="external-link-mark" aria-hidden="true">↗</span>
+        </a>
+        {% endif %}
+        {% if sharepoint_shipping_inspection_url %}
+        <a class="nav-item nav-item-external" href="{{ sharepoint_shipping_inspection_url }}" target="_blank" rel="noopener noreferrer" title="出荷検査表を別タブで開く">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v11H3z"/><path d="M7 7V4h10v3M8 12h8M12 10v4"/></svg>
+          <span class="nav-label">出荷検査表</span>
+          <span class="external-link-mark" aria-hidden="true">↗</span>
+        </a>
+        {% endif %}
+        {% if notion_measurement_equipment_inspection_url %}
+        <a class="nav-item nav-item-external" href="{{ notion_measurement_equipment_inspection_url }}" target="_blank" rel="noopener noreferrer" title="測定機器点検表を別タブで開く">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 12l3-3M8 16h8M12 4v2"/></svg>
+          <span class="nav-label">測定機器点検表</span>
+          <span class="external-link-mark" aria-hidden="true">↗</span>
+        </a>
+        {% endif %}
+        </div>
       </nav>
       <div class="sidebar-meta">
         <span class="nav-label">{{ dashboard.source_label }}</span>
@@ -39,19 +63,5 @@
     </div>
   </div>
   <div class="toast" role="status" aria-live="polite" aria-atomic="true" data-toast hidden></div>
-  <dialog class="drawing-preview-dialog" aria-label="加工図プレビュー" data-drawing-preview-dialog>
-    <div class="drawing-preview-header">
-      <strong data-drawing-preview-title>加工図</strong>
-      <div class="drawing-preview-actions">
-        <button class="icon-button" type="button" aria-label="画像を縮小" title="縮小" data-drawing-preview-zoom-out>−</button>
-        <button class="icon-button" type="button" aria-label="画像を等倍に戻す" title="等倍に戻す" data-drawing-preview-zoom-reset>100%</button>
-        <button class="icon-button" type="button" aria-label="画像を拡大" title="拡大" data-drawing-preview-zoom-in>＋</button>
-        <button class="icon-button" type="button" aria-label="加工図プレビューを閉じる" title="閉じる" data-drawing-preview-close>×</button>
-      </div>
-    </div>
-    <div class="drawing-preview-body">
-      <img alt="加工図プレビュー" data-drawing-preview-image>
-    </div>
-  </dialog>
 </body>
 </html>

@@ -41,9 +41,11 @@ class Settings(BaseSettings):
     google_spreadsheet_active_status: str = "稼働中"
     nas_drawing_directory: Path | None = None
 
-    sharepoint_site_id: str | None = None
     sharepoint_drive_id: str | None = None
     sharepoint_folder_id: str | None = None
+    sharepoint_process_inspection_url: str | None = None
+    sharepoint_shipping_inspection_url: str | None = None
+    notion_measurement_equipment_inspection_url: str | None = None
     microsoft_tenant_id: str | None = None
     microsoft_client_id: str | None = None
     microsoft_client_secret: str | None = None

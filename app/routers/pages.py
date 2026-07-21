@@ -1,7 +1,8 @@
 from collections import OrderedDict
 from datetime import datetime
+from urllib.parse import quote
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -73,6 +74,35 @@ def dashboard(
             "status_labels": STATUS_LABELS,
             "sample_mode": settings.use_sample_data,
             "auto_refresh_seconds": settings.auto_refresh_seconds,
+            "sharepoint_process_inspection_url": settings.sharepoint_process_inspection_url,
+            "sharepoint_shipping_inspection_url": settings.sharepoint_shipping_inspection_url,
+            "notion_measurement_equipment_inspection_url": settings.notion_measurement_equipment_inspection_url,
             "current_year": datetime.now().year,
+        },
+    )
+
+
+@router.get("/drawings/{machine_id}", response_class=HTMLResponse)
+def drawing_viewer(
+    machine_id: str,
+    request: Request,
+    settings: SettingsDependency,
+    session: DatabaseSessionDependency,
+) -> HTMLResponse:
+    """Show a NAS drawing in its own browser tab without opening the PDF viewer."""
+
+    dashboard_data = ProductionService(settings, get_memory_store()).get_dashboard(session)
+    machine = next(
+        (item for item in dashboard_data.machines if item.machine_id == machine_id), None
+    )
+    if machine is None or not machine.part_number or not machine.drawing.available:
+        raise HTTPException(status_code=404, detail="Drawing not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="drawing_viewer.html",
+        context={
+            "app_name": settings.app_name,
+            "machine": machine,
+            "preview_url": f"/api/drawings/{quote(machine.machine_id, safe='')}/preview",
         },
     )

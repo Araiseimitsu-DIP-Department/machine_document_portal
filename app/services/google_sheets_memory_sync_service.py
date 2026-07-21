@@ -8,6 +8,7 @@ from app.config import Settings
 from app.schemas.dashboard import DocumentState, MachineCard
 from app.services.memory_store import MemoryDashboardStore
 from app.services.nas_drawing_service import NasDrawingAccessError, NasDrawingService
+from app.services.sharepoint_service import SharePointService
 from app.services.spreadsheet_service import (
     GoogleSheetsService,
     SpreadsheetError,
@@ -51,12 +52,14 @@ class GoogleSheetsMemorySyncService:
         *,
         gateway: SpreadsheetGateway | None = None,
         drawing_service: NasDrawingService | None = None,
+        inspection_service: SharePointService | None = None,
     ) -> None:
         self.memory_store = memory_store
         self.gateway = gateway or GoogleSheetsService(settings)
         self.drawing_service = drawing_service or NasDrawingService(
             settings.nas_drawing_directory
         )
+        self.inspection_service = inspection_service or SharePointService(settings)
 
     def sync(self) -> MemorySpreadsheetSyncResult:
         """Serialize sheet refreshes so multiple clients do not duplicate NAS work."""
@@ -80,10 +83,18 @@ class GoogleSheetsMemorySyncService:
             )
 
         synced_at = datetime.now(timezone.utc)
+        inspection_results = self.inspection_service.search_many(
+            normalize_part_number(record.part_number)
+            for record in records
+            if record.part_number
+        )
         cards: list[MachineCard] = []
         for display_order, record in enumerate(records, start=1):
             group_name, machine_number = parse_machine_id(record.machine_id)
             drawing = self._drawing_state(record.machine_id, record.part_number)
+            inspection_result = inspection_results.get(
+                normalize_part_number(record.part_number)
+            )
             cards.append(
                 MachineCard(
                     machine_id=record.machine_id,
@@ -95,6 +106,10 @@ class GoogleSheetsMemorySyncService:
                     normalized_part_number=normalize_part_number(record.part_number),
                     product_name=record.product_name,
                     production_status=record.production_status,
+                    inspection=DocumentState(
+                        status=inspection_result.status if inspection_result else "not_checked",
+                        url=inspection_result.url if inspection_result else None,
+                    ),
                     drawing=drawing,
                     updated_at=synced_at,
                 )
@@ -125,5 +140,5 @@ class GoogleSheetsMemorySyncService:
             return DocumentState(status="not_found")
         return DocumentState(
             status="found",
-            url=f"/api/drawings/{quote(machine_id, safe='')}/preview",
+            url=f"/drawings/{quote(machine_id, safe='')}",
         )

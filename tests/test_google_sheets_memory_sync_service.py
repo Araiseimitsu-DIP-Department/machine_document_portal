@@ -38,7 +38,7 @@ def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> N
     assert a1.part_number == "ab-100"
     assert a1.normalized_part_number == "AB-100"
     assert a1.drawing.status == "found"
-    assert a1.drawing.url == "/api/drawings/A-1/preview"
+    assert a1.drawing.url == "/drawings/A-1"
     assert g2.part_number == "ab-200"
     assert g2.group_name == "G"
     assert g2.drawing.status == "not_found"

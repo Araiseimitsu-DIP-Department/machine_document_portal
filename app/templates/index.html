@@ -13,7 +13,6 @@
       href="{{ document.url }}"
       target="_blank"
       rel="noopener noreferrer"
-      {% if document_name == '加工図' %}data-drawing-preview{% endif %}
       aria-label="{% if document_name == '加工図' %}{{ machine.machine_id }}_{{ machine.part_number }}_加工図面{% else %}{{ machine.machine_id }}の{{ document_name }}を開く{% endif %}"
       title="{% if document_name == '加工図' %}{{ machine.machine_id }}_{{ machine.part_number }}_加工図面{% else %}{{ document_name }}：{{ state_text }}{% endif %}"
     >

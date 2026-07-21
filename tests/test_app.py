@@ -38,8 +38,13 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert 'class="badge badge-setup">セット中</span>' in response.text
     assert "machine-updated-at" not in response.text
     assert 'aria-label="A-1_AX-1200-01_加工図面"' in response.text
-    assert "data-drawing-preview" in response.text
+    assert 'target="_blank"' in response.text
     assert 'aria-label="全号機一覧"' in response.text
+    assert ">測定機器点検表</span>" in response.text
+    assert "27737bffefe881aca5aac2e44de8cb2e" in response.text
+    assert ">外部リンク</p>" in response.text
+    assert response.text.count('class="nav-item nav-item-external"') == 3
+    assert response.text.count('class="external-link-mark"') == 3
     assert response.text.count(">検査シート</span>") == 6
     assert response.text.count(">加工図面</span>") == 6
 
@@ -49,3 +54,12 @@ def test_manual_refresh_endpoint() -> None:
         response = client.post("/api/refresh")
     assert response.status_code == 200
     assert response.json()["ok"] is True
+
+
+def test_drawing_viewer_opens_as_a_separate_page() -> None:
+    with TestClient(app) as client:
+        response = client.get("/drawings/A-1")
+    assert response.status_code == 200
+    assert "A-1_AX-1200-01_加工図面" in response.text
+    assert 'data-drawing-viewer-image' in response.text
+    assert 'src="/api/drawings/A-1/preview"' in response.text
