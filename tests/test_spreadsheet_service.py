@@ -40,11 +40,24 @@ def test_google_sheets_reads_the_configured_production_columns() -> None:
         "range_name": "'生産中'!A2:I",
     }
     assert [(record.machine_id, record.part_number, record.product_name, record.production_status) for record in records] == [
-        ("A-1", "ab-100", "製品A", "稼働中"),
+        ("A-1", " ab-100 ", "製品A", "稼働中"),
         ("A-2", None, None, "停止中"),
         ("A-3", "ab-300", "製品C", "生産終了"),
         ("A-4", "ab-400", "製品D", "セット中"),
     ]
+
+
+def test_google_sheets_preserves_part_number_whitespace_for_literal_matching() -> None:
+    service = GoogleSheetsService(
+        _settings(),
+        values_fetcher=lambda _spreadsheet_id, _range_name: [
+            ["稼働中", "", "", "A-1", "", "", "", " AB 100 ", "製品A"],
+        ],
+    )
+
+    record = service.fetch_current_productions()[0]
+
+    assert record.part_number == " AB 100 "
 
 
 def test_google_sheets_rejects_duplicate_machine_ids() -> None:

@@ -26,6 +26,7 @@ def test_nas_drawing_service_finds_a_pdf_by_exact_part_number(tmp_path: Path) ->
     assert service.find_pdf("AB-100.pdf") == drawing
     assert service.find_pdf("missing") is None
     assert service.find_pdf("../AB-100") is None
+    assert service.find_pdf(" AB-100 ") is None
 
 
 def test_drawing_endpoint_renders_only_the_current_machine_drawing(
@@ -33,7 +34,10 @@ def test_drawing_endpoint_renders_only_the_current_machine_drawing(
 ) -> None:
     drawing = tmp_path / "AB-100.pdf"
     make_pdf(drawing)
-    settings = Settings(nas_drawing_directory=tmp_path)
+    settings = Settings(
+        nas_drawing_directory=tmp_path,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
+    )
     store = MemoryDashboardStore(settings)
     store.replace_dashboard(
         [MachineCard(machine_id="A-1", group_name="A", machine_number=1, part_number="AB-100")]

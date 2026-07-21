@@ -82,7 +82,9 @@ class GoogleSheetsService(SpreadsheetGateway):
             records.append(
                 ProductionRecord(
                     machine_id=machine_id,
-                    part_number=_cell(row, columns["part_number"]),
+                    part_number=_cell(
+                        row, columns["part_number"], preserve_whitespace=True
+                    ),
                     product_name=_cell(row, columns["product_name"]),
                     production_status=_cell(row, columns["production_status"]),
                 )
@@ -131,11 +133,18 @@ class GoogleSheetsService(SpreadsheetGateway):
             raise SpreadsheetFetchError("Google Sheets request failed") from exc
 
 
-def _cell(row: Sequence[object], column_index: int) -> str | None:
+def _cell(
+    row: Sequence[object],
+    column_index: int,
+    *,
+    preserve_whitespace: bool = False,
+) -> str | None:
     if len(row) < column_index:
         return None
-    value = str(row[column_index - 1]).strip()
-    return value or None
+    value = str(row[column_index - 1])
+    if not value.strip():
+        return None
+    return value if preserve_whitespace else value.strip()
 
 
 def _column_index(value: str) -> int:

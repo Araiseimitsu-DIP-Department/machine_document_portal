@@ -51,7 +51,6 @@
     <div>
       <p class="page-eyebrow">MACHINE DOCUMENT PORTAL</p>
       <h1 class="page-title">稼働中工程内検査シート</h1>
-      <p class="page-description">全号機を見渡し、必要な資料を開いてください。</p>
     </div>
     <div class="page-actions">
       <div class="updated-summary">
@@ -60,10 +59,13 @@
           {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at|format_jst('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
         </time>
       </div>
-      <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 4v4h-4"/></svg>
-        <span>最新情報に更新</span>
-      </button>
+      <div class="refresh-action">
+        <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 4v4h-4"/></svg>
+          <span>最新情報に更新</span>
+        </button>
+        <p class="refresh-guidance">工程内検査シート・加工図面を更新するときに押してください。</p>
+      </div>
     </div>
   </header>
 

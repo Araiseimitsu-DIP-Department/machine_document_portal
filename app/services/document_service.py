@@ -19,8 +19,6 @@ class DocumentService:
     def preserve_previous_on_error(
         previous: DocumentState | None, failed_status: str = "api_error"
     ) -> tuple[DocumentState, bool]:
-        """Keep a last-known-good link when an external lookup fails."""
+        """Disable a document link when the latest external lookup fails."""
 
-        if previous and previous.available:
-            return previous, True
         return DocumentState(status=failed_status), False

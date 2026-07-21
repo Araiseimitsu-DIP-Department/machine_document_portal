@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+import logging
+from datetime import datetime, timezone
 from functools import lru_cache
 from threading import RLock
 
@@ -9,11 +9,7 @@ from app.services.sample_data_service import SampleDataService
 from app.utils.machine_sort import sort_machines
 
 
-@dataclass(frozen=True, slots=True)
-class CachedDocuments:
-    inspection: DocumentState
-    drawing: DocumentState
-    checked_at: datetime
+logger = logging.getLogger(__name__)
 
 
 class MemoryDashboardStore:
@@ -23,13 +19,11 @@ class MemoryDashboardStore:
         self.settings = settings
         self._lock = RLock()
         self._dashboard: DashboardData | None = None
-        self._document_cache: dict[str, CachedDocuments] = {}
 
     def get_dashboard(self) -> DashboardData:
         with self._lock:
             if self._dashboard is None:
                 self._dashboard = self._load_initial_dashboard()
-                self._index_document_cache(self._dashboard.machines, clear=True)
             return self._dashboard.model_copy(deep=True)
 
     def replace_dashboard(
@@ -42,20 +36,21 @@ class MemoryDashboardStore:
         """Replace current state after a future external-service refresh."""
 
         with self._lock:
-            prepared_machines = self._apply_cached_documents(machines)
             self._dashboard = DashboardData(
-                machines=sort_machines(prepared_machines),
+                machines=sort_machines(
+                    [machine.model_copy(deep=True) for machine in machines]
+                ),
                 last_updated_at=updated_at or datetime.now(timezone.utc),
                 source_label="メモリ",
                 notice=notice,
             )
-            self._index_document_cache(self._dashboard.machines)
+            if not self.settings.use_sample_data:
+                self._save_snapshot(self._dashboard)
             return self._dashboard.model_copy(deep=True)
 
     def reload_sample(self) -> DashboardData:
         with self._lock:
             self._dashboard = self._load_sample_dashboard()
-            self._index_document_cache(self._dashboard.machines, clear=True)
             return self._dashboard.model_copy(deep=True)
 
     def set_notice(self, notice: str, *, degraded: bool = True) -> DashboardData:
@@ -66,47 +61,39 @@ class MemoryDashboardStore:
                 self._dashboard = self._load_initial_dashboard()
             self._dashboard.notice = notice
             self._dashboard.degraded = degraded
+            if not self.settings.use_sample_data:
+                self._save_snapshot(self._dashboard)
             return self._dashboard.model_copy(deep=True)
 
-    def cache_documents(
-        self,
-        normalized_part_number: str,
-        inspection: DocumentState,
-        drawing: DocumentState,
-        *,
-        checked_at: datetime | None = None,
-    ) -> None:
-        with self._lock:
-            self._document_cache[normalized_part_number] = CachedDocuments(
-                inspection=inspection.model_copy(deep=True),
-                drawing=drawing.model_copy(deep=True),
-                checked_at=checked_at or datetime.now(timezone.utc),
-            )
+    def mark_external_documents_unavailable(self, notice: str) -> DashboardData:
+        """Keep reference production data but disable links after a failed full sync."""
 
-    def get_cached_documents(self, normalized_part_number: str) -> CachedDocuments | None:
         with self._lock:
-            cached = self._document_cache.get(normalized_part_number)
-            if cached is None:
-                return None
-            if self._cache_expired(cached):
-                del self._document_cache[normalized_part_number]
-                return None
-            return CachedDocuments(
-                inspection=cached.inspection.model_copy(deep=True),
-                drawing=cached.drawing.model_copy(deep=True),
-                checked_at=cached.checked_at,
-            )
+            if self._dashboard is None:
+                self._dashboard = self._load_initial_dashboard()
+            for machine in self._dashboard.machines:
+                if not machine.has_production:
+                    continue
+                machine.inspection = DocumentState(status="api_error")
+                machine.drawing = DocumentState(status="api_error")
+            self._dashboard.notice = notice
+            self._dashboard.degraded = True
+            self._save_snapshot(self._dashboard)
+            return self._dashboard.model_copy(deep=True)
 
     def clear(self) -> None:
         """Clear all process-local state, equivalent to an application restart."""
 
         with self._lock:
             self._dashboard = None
-            self._document_cache.clear()
 
     def _load_initial_dashboard(self) -> DashboardData:
         if self.settings.use_sample_data:
             return self._load_sample_dashboard()
+        snapshot = self._load_snapshot()
+        if snapshot is not None:
+            snapshot.source_label = "メモリ（前回保存）"
+            return snapshot
         return DashboardData(
             machines=[],
             source_label="メモリ",
@@ -121,47 +108,28 @@ class MemoryDashboardStore:
         )
         return dashboard
 
-    def _apply_cached_documents(self, machines: list[MachineCard]) -> list[MachineCard]:
-        prepared: list[MachineCard] = []
-        for source in machines:
-            machine = source.model_copy(deep=True)
-            if machine.normalized_part_number:
-                cached = self.get_cached_documents(machine.normalized_part_number)
-                if cached:
-                    if machine.inspection.status == "not_checked":
-                        machine.inspection = cached.inspection
-                    if machine.drawing.status == "not_checked":
-                        machine.drawing = cached.drawing
-            prepared.append(machine)
-        return prepared
+    def _load_snapshot(self) -> DashboardData | None:
+        path = self.settings.dashboard_snapshot_path
+        try:
+            return DashboardData.model_validate_json(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError):
+            logger.exception("Dashboard snapshot could not be read")
+            return None
 
-    def _index_document_cache(
-        self, machines: list[MachineCard], *, clear: bool = False
-    ) -> None:
-        if clear:
-            self._document_cache.clear()
-        for machine in machines:
-            if not machine.normalized_part_number:
-                continue
-            if (
-                machine.inspection.status == "not_checked"
-                and machine.drawing.status == "not_checked"
-            ):
-                continue
-            self._document_cache[machine.normalized_part_number] = CachedDocuments(
-                inspection=machine.inspection.model_copy(deep=True),
-                drawing=machine.drawing.model_copy(deep=True),
-                checked_at=machine.updated_at or datetime.now(timezone.utc),
+    def _save_snapshot(self, dashboard: DashboardData) -> None:
+        path = self.settings.dashboard_snapshot_path
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_suffix(path.suffix + ".tmp")
+            temporary.write_text(
+                dashboard.model_dump_json(indent=2),
+                encoding="utf-8",
             )
-
-    def _cache_expired(self, cached: CachedDocuments) -> bool:
-        ttl = self.settings.memory_cache_ttl_seconds
-        if ttl == 0:
-            return False
-        checked_at = cached.checked_at
-        if checked_at.tzinfo is None:
-            checked_at = checked_at.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc) - checked_at > timedelta(seconds=ttl)
+            temporary.replace(path)
+        except OSError:
+            logger.exception("Dashboard snapshot could not be saved")
 
 
 @lru_cache

@@ -1,3 +1,5 @@
+import re
+from datetime import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -50,8 +52,17 @@ class Settings(BaseSettings):
     microsoft_client_id: str | None = None
     microsoft_client_secret: str | None = None
 
+    scheduled_operations_enabled: bool = False
+    next_day_sheet_lookahead_days: int = Field(default=31, ge=1, le=62)
+    araichat_base_url: str | None = None
+    araichat_api_key: str | None = None
+    araichat_room_id: str = "24"
+    drawing_printer_name: str = "iR-ADV C5735(第1工場)"
+    dashboard_snapshot_path: Path = PROJECT_ROOT / "data" / "dashboard_snapshot.json"
+    scheduled_job_state_path: Path = PROJECT_ROOT / "data" / "scheduled_job_state.json"
+
     auto_refresh_seconds: int = Field(default=300, ge=0)
-    memory_cache_ttl_seconds: int = Field(default=300, ge=0)
+    document_refresh_times: str = ""
     log_level: str = "INFO"
     log_dir: Path = PROJECT_ROOT / "logs"
     log_max_bytes: int = Field(default=5_242_880, ge=1024)
@@ -70,6 +81,36 @@ class Settings(BaseSettings):
             if normalized in {"debug", "development", "dev", "on", "yes"}:
                 return True
         return value
+
+    @field_validator("document_refresh_times", mode="before")
+    @classmethod
+    def validate_document_refresh_times(cls, value: object) -> str:
+        """Normalize comma-separated Japan-time schedules in HH:MM format."""
+
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            raise ValueError("DOCUMENT_REFRESH_TIMES must be comma-separated HH:MM values")
+        normalized: list[str] = []
+        for candidate in value.split(","):
+            candidate = candidate.strip()
+            if not candidate:
+                continue
+            if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", candidate):
+                raise ValueError(
+                    "DOCUMENT_REFRESH_TIMES must use 24-hour HH:MM values"
+                )
+            if candidate not in normalized:
+                normalized.append(candidate)
+        return ",".join(normalized)
+
+    @property
+    def document_refresh_schedule(self) -> tuple[time, ...]:
+        return tuple(
+            time(hour=int(value[:2]), minute=int(value[3:]))
+            for value in self.document_refresh_times.split(",")
+            if value
+        )
 
     @property
     def database_configured(self) -> bool:

@@ -32,6 +32,7 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert response.text.count('class="overview-lane"') == 5
     assert response.text.count('class="machine-row ') == 61
     assert 'data-auto-refresh-seconds="120"' in response.text
+    assert "工程内検査シート・加工図面を更新するときに押してください。" in response.text
     assert 'class="badge badge-running">稼働中</span>' in response.text
     assert 'class="badge badge-stopped">停止中</span>' in response.text
     assert 'class="badge badge-finished">生産終了</span>' in response.text

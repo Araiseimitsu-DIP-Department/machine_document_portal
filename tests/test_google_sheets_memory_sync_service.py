@@ -1,4 +1,7 @@
+from collections.abc import Iterable
+
 from app.config import Settings
+from app.services.google_drive_service import DocumentSearchResult
 from app.services.google_sheets_memory_sync_service import GoogleSheetsMemorySyncService
 from app.services.memory_store import MemoryDashboardStore
 from app.services.spreadsheet_service import (
@@ -16,15 +19,38 @@ class FakeGateway(SpreadsheetGateway):
         ]
 
 
+class LiteralInspectionService:
+    def __init__(self) -> None:
+        self.requested_part_numbers: tuple[str, ...] = ()
+
+    def search_many(
+        self, part_numbers: Iterable[str]
+    ) -> dict[str, DocumentSearchResult]:
+        self.requested_part_numbers = tuple(part_numbers)
+        return {
+            "ab-100": DocumentSearchResult(
+                status="found", url="https://example.com/ab-100"
+            ),
+            "ab-200": DocumentSearchResult(status="not_found"),
+        }
+
+
 def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> None:
     (tmp_path / "ab-100.pdf").write_bytes(b"%PDF-1.4\n")
     settings = Settings(
-        persistence_mode="memory", use_sample_data=False, nas_drawing_directory=tmp_path
+        persistence_mode="memory",
+        use_sample_data=False,
+        nas_drawing_directory=tmp_path,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
     )
     store = MemoryDashboardStore(settings)
+    inspection_service = LiteralInspectionService()
 
     result = GoogleSheetsMemorySyncService(
-        settings, store, gateway=FakeGateway()
+        settings,
+        store,
+        gateway=FakeGateway(),
+        inspection_service=inspection_service,
     ).sync()
     dashboard = store.get_dashboard()
     a1 = next(machine for machine in dashboard.machines if machine.machine_id == "A-1")
@@ -37,12 +63,15 @@ def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> N
     assert len(dashboard.machines) == 2
     assert a1.part_number == "ab-100"
     assert a1.normalized_part_number == "AB-100"
+    assert a1.inspection.status == "found"
+    assert a1.inspection.url == "https://example.com/ab-100"
     assert a1.drawing.status == "found"
     assert a1.drawing.url == "/drawings/A-1"
     assert g2.part_number == "ab-200"
     assert g2.group_name == "G"
     assert g2.drawing.status == "not_found"
     assert dashboard.notice is None
+    assert inspection_service.requested_part_numbers == ("ab-100", "ab-200")
 
 
 class FailingGateway(SpreadsheetGateway):
@@ -50,8 +79,12 @@ class FailingGateway(SpreadsheetGateway):
         raise SpreadsheetFetchError("request failed")
 
 
-def test_memory_sync_shows_a_notice_only_when_the_sheet_cannot_be_read() -> None:
-    settings = Settings(persistence_mode="memory", use_sample_data=False)
+def test_memory_sync_shows_a_notice_only_when_the_sheet_cannot_be_read(tmp_path) -> None:
+    settings = Settings(
+        persistence_mode="memory",
+        use_sample_data=False,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
+    )
     store = MemoryDashboardStore(settings)
 
     result = GoogleSheetsMemorySyncService(

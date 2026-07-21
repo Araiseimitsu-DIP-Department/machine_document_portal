@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -11,7 +11,6 @@ import httpx
 
 from app.config import Settings
 from app.services.google_drive_service import DocumentSearchResult
-from app.utils.part_number import normalize_part_number
 
 
 class SharePointError(Exception):
@@ -62,23 +61,23 @@ class SharePointService:
             )
         )
 
-    def search(self, normalized_part_number: str) -> DocumentSearchResult:
+    def search(self, part_number: str) -> DocumentSearchResult:
         """Look up one exact filename stem for callers that need a single result."""
 
-        return self.search_many((normalized_part_number,)).get(
-            normalize_part_number(normalized_part_number),
+        return self.search_many((part_number,)).get(
+            part_number,
             DocumentSearchResult(status="not_checked"),
         )
 
     def search_many(
-        self, normalized_part_numbers: Iterable[str]
+        self, part_numbers: Iterable[str]
     ) -> dict[str, DocumentSearchResult]:
-        """Match filename stems to part numbers after one folder-list request."""
+        """Match unmodified filename stems to part numbers after one folder-list request."""
 
         part_numbers = {
-            normalize_part_number(part_number)
-            for part_number in normalized_part_numbers
-            if part_number and normalize_part_number(part_number)
+            part_number
+            for part_number in part_numbers
+            if part_number
         }
         if not part_numbers:
             return {}
@@ -99,7 +98,7 @@ class SharePointService:
         else:
             matches: dict[str, list[_SharePointFile]] = defaultdict(list)
             for file in files:
-                filename_stem = normalize_part_number(PurePath(file.name).stem)
+                filename_stem = PurePath(file.name).stem
                 if filename_stem in part_numbers:
                     matches[filename_stem].append(file)
             return {
@@ -127,29 +126,51 @@ class SharePointService:
             token = self._access_token(client)
             headers = {"Authorization": f"Bearer {token}"}
             drive_id = quote(self.settings.sharepoint_drive_id or "", safe="")
-            folder_id = quote(self.settings.sharepoint_folder_id or "", safe="")
-            next_url: str | None = (
-                f"{self.graph_base_url}/drives/{drive_id}/items/{folder_id}/children"
-            )
-            params: dict[str, str] | None = {
-                "$select": "id,name,webUrl,file",
-                "$top": "999",
-            }
+            root_folder_id = self.settings.sharepoint_folder_id or ""
+            pending_folder_ids = deque([root_folder_id])
+            visited_folder_ids: set[str] = set()
             files: list[_SharePointFile] = []
 
-            while next_url:
-                response = self._get(client, next_url, headers=headers, params=params)
-                payload = self._json(response)
-                for item in payload.get("value", []):
-                    if not isinstance(item, dict) or "file" not in item:
-                        continue
-                    name = item.get("name")
-                    web_url = item.get("webUrl")
-                    if isinstance(name, str) and isinstance(web_url, str):
-                        files.append(_SharePointFile(name=name, url=web_url))
-                candidate = payload.get("@odata.nextLink")
-                next_url = candidate if isinstance(candidate, str) else None
-                params = None
+            while pending_folder_ids:
+                folder_id = pending_folder_ids.popleft()
+                if folder_id in visited_folder_ids:
+                    continue
+                visited_folder_ids.add(folder_id)
+                encoded_folder_id = quote(folder_id, safe="")
+                next_url: str | None = (
+                    f"{self.graph_base_url}/drives/{drive_id}/items/"
+                    f"{encoded_folder_id}/children"
+                )
+                params: dict[str, str] | None = {
+                    "$select": "id,name,webUrl,file,folder",
+                    "$top": "999",
+                }
+
+                while next_url:
+                    response = self._get(
+                        client,
+                        next_url,
+                        headers=headers,
+                        params=params,
+                    )
+                    payload = self._json(response)
+                    for item in payload.get("value", []):
+                        if not isinstance(item, dict):
+                            continue
+                        item_id = item.get("id")
+                        if "folder" in item and isinstance(item_id, str):
+                            if item_id not in visited_folder_ids:
+                                pending_folder_ids.append(item_id)
+                            continue
+                        if "file" not in item:
+                            continue
+                        name = item.get("name")
+                        web_url = item.get("webUrl")
+                        if isinstance(name, str) and isinstance(web_url, str):
+                            files.append(_SharePointFile(name=name, url=web_url))
+                    candidate = payload.get("@odata.nextLink")
+                    next_url = candidate if isinstance(candidate, str) else None
+                    params = None
             return files
 
     def _access_token(self, client: httpx.Client) -> str:

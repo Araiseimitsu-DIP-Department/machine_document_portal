@@ -16,6 +16,7 @@ token.pickle
 *.pfx
 secrets/
 logs/
+data/
 __pycache__/
 *.py[cod]
 .pytest_cache/

@@ -12,11 +12,12 @@ def test_links_are_refreshed_only_when_part_number_changes() -> None:
     assert service.should_refresh_links("AB-100", "AB-100", force=True) is True
 
 
-def test_previous_good_link_is_kept_after_external_error() -> None:
+def test_previous_good_link_is_disabled_after_external_error() -> None:
     previous = DocumentState(status="found", url="https://example.com/document")
     state, stale = DocumentService.preserve_previous_on_error(previous)
-    assert state == previous
-    assert stale is True
+    assert state.status == "api_error"
+    assert state.url is None
+    assert stale is False
 
 
 def test_error_is_visible_when_no_previous_link_exists() -> None:
@@ -50,11 +51,12 @@ def test_missing_database_configuration_is_a_friendly_degraded_result() -> None:
     assert "データベース" in (data.notice or "")
 
 
-def test_sample_mode_does_not_need_postgresql() -> None:
+def test_sample_mode_does_not_need_postgresql(tmp_path) -> None:
     settings = Settings(
         use_sample_data=True,
         persistence_mode="memory",
         database_url=None,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
     )
     store = MemoryDashboardStore(settings)
     data = ProductionService(settings, store).get_dashboard(None)
@@ -63,11 +65,12 @@ def test_sample_mode_does_not_need_postgresql() -> None:
     assert data.source_label == "メモリ（サンプル）"
 
 
-def test_memory_mode_without_external_data_does_not_request_database() -> None:
+def test_memory_mode_without_external_data_does_not_request_database(tmp_path) -> None:
     settings = Settings(
         use_sample_data=False,
         persistence_mode="memory",
         database_url=None,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
     )
     data = ProductionService(settings, MemoryDashboardStore(settings)).get_dashboard(None)
     assert data.degraded is False

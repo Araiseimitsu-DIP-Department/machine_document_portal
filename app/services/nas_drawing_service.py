@@ -38,8 +38,8 @@ class NasDrawingService:
 
     @staticmethod
     def _pdf_filename(part_number: str) -> str | None:
-        filename = part_number.strip()
-        if not filename or "/" in filename or "\\" in filename:
+        filename = part_number
+        if not filename.strip() or "/" in filename or "\\" in filename:
             return None
         return filename if filename.lower().endswith(".pdf") else f"{filename}.pdf"
 

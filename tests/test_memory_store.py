@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta, timezone
-
 from app.config import Settings
 from app.schemas.dashboard import DocumentState, MachineCard
 from app.services.memory_store import MemoryDashboardStore
@@ -20,21 +18,6 @@ def test_memory_store_returns_defensive_copies() -> None:
     assert second.machines[0].part_number == "AX-1200-01"
 
 
-def test_memory_store_reuses_document_results_by_normalized_part_number() -> None:
-    store = make_store()
-    inspection = DocumentState(status="found", url="https://example.com/inspection")
-    drawing = DocumentState(status="multiple")
-    checked_at = datetime.now(timezone.utc)
-
-    store.cache_documents("AB-100", inspection, drawing, checked_at=checked_at)
-    cached = store.get_cached_documents("AB-100")
-
-    assert cached is not None
-    assert cached.inspection == inspection
-    assert cached.drawing == drawing
-    assert cached.checked_at == checked_at
-
-
 def test_replacing_dashboard_keeps_state_until_store_is_cleared() -> None:
     store = make_store()
     replacement = MachineCard(
@@ -52,40 +35,65 @@ def test_replacing_dashboard_keeps_state_until_store_is_cleared() -> None:
     assert store.get_dashboard().machines[0].machine_id == "A-1"
 
 
-def test_replacing_dashboard_reuses_cached_documents_for_same_part() -> None:
-    store = make_store()
-    store.cache_documents(
-        "ZZ-001",
-        DocumentState(status="found", url="https://example.com/inspection"),
-        DocumentState(status="found", url="https://example.com/drawing"),
-    )
-    replacement = MachineCard(
-        machine_id="Z-1",
-        group_name="Z",
-        machine_number=1,
-        part_number="ZZ-001",
-        normalized_part_number="ZZ-001",
-    )
-
-    dashboard = store.replace_dashboard([replacement])
-    assert dashboard.machines[0].inspection.available is True
-    assert dashboard.machines[0].drawing.available is True
-
-
-def test_expired_document_cache_is_discarded() -> None:
+def test_dashboard_snapshot_is_loaded_after_process_store_recreation(tmp_path) -> None:
     settings = Settings(
         use_sample_data=False,
         persistence_mode="memory",
-        memory_cache_ttl_seconds=1,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
+    )
+    first_store = MemoryDashboardStore(settings)
+    first_store.replace_dashboard(
+        [
+            MachineCard(
+                machine_id="A-1",
+                group_name="A",
+                machine_number=1,
+                part_number="AB-100",
+                inspection=DocumentState(
+                    status="found", url="https://example.com/inspection"
+                ),
+            )
+        ]
+    )
+
+    restored = MemoryDashboardStore(settings).get_dashboard()
+
+    assert restored.machines[0].part_number == "AB-100"
+    assert restored.machines[0].inspection.available is True
+    assert restored.source_label == "メモリ（前回保存）"
+
+
+def test_failed_full_sync_disables_links_in_snapshot(tmp_path) -> None:
+    settings = Settings(
+        use_sample_data=False,
+        persistence_mode="memory",
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
     )
     store = MemoryDashboardStore(settings)
-    store.cache_documents(
-        "OLD-001",
-        DocumentState(status="found", url="https://example.com/inspection"),
-        DocumentState(status="found", url="https://example.com/drawing"),
-        checked_at=datetime.now(timezone.utc) - timedelta(seconds=2),
+    store.replace_dashboard(
+        [
+            MachineCard(
+                machine_id="A-1",
+                group_name="A",
+                machine_number=1,
+                part_number="AB-100",
+                inspection=DocumentState(
+                    status="found", url="https://example.com/inspection"
+                ),
+                drawing=DocumentState(
+                    status="found", url="https://example.com/drawing"
+                ),
+            )
+        ]
     )
-    assert store.get_cached_documents("OLD-001") is None
+
+    store.mark_external_documents_unavailable("同期失敗")
+    restored = MemoryDashboardStore(settings).get_dashboard()
+
+    assert restored.machines[0].inspection.status == "api_error"
+    assert restored.machines[0].drawing.status == "api_error"
+    assert restored.machines[0].inspection.url is None
+    assert restored.notice == "同期失敗"
 
 
 def test_memory_mode_never_marks_database_as_configured() -> None:

@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from app.config import Settings
 from app.schemas.dashboard import DocumentState, MachineCard
+from app.services.google_drive_service import DocumentSearchResult
 from app.services.memory_store import MemoryDashboardStore
 from app.services.nas_drawing_service import NasDrawingAccessError, NasDrawingService
 from app.services.sharepoint_service import SharePointService
@@ -62,18 +63,69 @@ class GoogleSheetsMemorySyncService:
         self.inspection_service = inspection_service or SharePointService(settings)
 
     def sync(self) -> MemorySpreadsheetSyncResult:
-        """Serialize sheet refreshes so multiple clients do not duplicate NAS work."""
+        """Fully refresh Google Sheets, SharePoint, and NAS."""
 
         with _SYNC_LOCK:
-            return self._sync()
+            return self._sync(refresh_all_documents=True)
 
-    def _sync(self) -> MemorySpreadsheetSyncResult:
+    def sync_changed(self) -> MemorySpreadsheetSyncResult:
+        """Refresh Google Sheets and recheck documents only for changed part numbers."""
+
+        with _SYNC_LOCK:
+            return self._sync(refresh_all_documents=False)
+
+    def refresh_documents(self) -> MemorySpreadsheetSyncResult:
+        """Recheck SharePoint and NAS for every machine without reading Google Sheets."""
+
+        with _SYNC_LOCK:
+            dashboard = self.memory_store.get_dashboard()
+            synced_at = datetime.now(timezone.utc)
+            part_numbers = tuple(
+                machine.part_number
+                for machine in dashboard.machines
+                if machine.part_number
+            )
+            inspection_results = (
+                self.inspection_service.search_many(part_numbers)
+                if part_numbers
+                else {}
+            )
+            cards: list[MachineCard] = []
+            for machine in dashboard.machines:
+                cards.append(
+                    machine.model_copy(
+                        update={
+                            "inspection": self._inspection_state(
+                                machine.part_number,
+                                inspection_results,
+                            ),
+                            "drawing": self._drawing_state(
+                                machine.machine_id,
+                                machine.part_number,
+                            ),
+                            "updated_at": synced_at,
+                            "stale": False,
+                        },
+                        deep=True,
+                    )
+                )
+            self.memory_store.replace_dashboard(cards, updated_at=synced_at)
+            count = len(cards)
+            return MemorySpreadsheetSyncResult(
+                ok=True,
+                processed_count=count,
+                success_count=count,
+                error_count=0,
+                message=f"SharePoint・NAS資料を {count} 号機分更新しました。",
+            )
+
+    def _sync(self, *, refresh_all_documents: bool) -> MemorySpreadsheetSyncResult:
         try:
             records = self.gateway.fetch_current_productions()
         except SpreadsheetError:
             logger.exception("Google Sheets synchronization could not read the spreadsheet")
             message = "Google Sheets を読み込めませんでした。設定と共有権限を確認してください。"
-            self.memory_store.set_notice(message)
+            self.memory_store.mark_external_documents_unavailable(message)
             return MemorySpreadsheetSyncResult(
                 ok=False,
                 processed_count=0,
@@ -82,19 +134,48 @@ class GoogleSheetsMemorySyncService:
                 message=message,
             )
 
-        synced_at = datetime.now(timezone.utc)
-        inspection_results = self.inspection_service.search_many(
-            normalize_part_number(record.part_number)
+        previous_dashboard = self.memory_store.get_dashboard()
+        previous_by_machine_id = {
+            machine.machine_id: machine for machine in previous_dashboard.machines
+        }
+        records_requiring_document_refresh = [
+            record
             for record in records
+            if refresh_all_documents
+            or record.machine_id not in previous_by_machine_id
+            or previous_by_machine_id[record.machine_id].part_number
+            != record.part_number
+        ]
+
+        synced_at = datetime.now(timezone.utc)
+        part_numbers_to_refresh = tuple(
+            record.part_number
+            for record in records_requiring_document_refresh
             if record.part_number
+        )
+        inspection_results = (
+            self.inspection_service.search_many(part_numbers_to_refresh)
+            if part_numbers_to_refresh
+            else {}
         )
         cards: list[MachineCard] = []
         for display_order, record in enumerate(records, start=1):
             group_name, machine_number = parse_machine_id(record.machine_id)
-            drawing = self._drawing_state(record.machine_id, record.part_number)
-            inspection_result = inspection_results.get(
-                normalize_part_number(record.part_number)
+            previous = previous_by_machine_id.get(record.machine_id)
+            documents_changed = (
+                refresh_all_documents
+                or previous is None
+                or previous.part_number != record.part_number
             )
+            if documents_changed:
+                drawing = self._drawing_state(record.machine_id, record.part_number)
+                inspection = self._inspection_state(
+                    record.part_number,
+                    inspection_results,
+                )
+            else:
+                drawing = previous.drawing.model_copy(deep=True)
+                inspection = previous.inspection.model_copy(deep=True)
             cards.append(
                 MachineCard(
                     machine_id=record.machine_id,
@@ -106,10 +187,7 @@ class GoogleSheetsMemorySyncService:
                     normalized_part_number=normalize_part_number(record.part_number),
                     product_name=record.product_name,
                     production_status=record.production_status,
-                    inspection=DocumentState(
-                        status=inspection_result.status if inspection_result else "not_checked",
-                        url=inspection_result.url if inspection_result else None,
-                    ),
+                    inspection=inspection,
                     drawing=drawing,
                     updated_at=synced_at,
                 )
@@ -126,6 +204,19 @@ class GoogleSheetsMemorySyncService:
             success_count=success_count,
             error_count=0,
             message=message,
+        )
+
+    @staticmethod
+    def _inspection_state(
+        part_number: str | None,
+        inspection_results: dict[str, DocumentSearchResult],
+    ) -> DocumentState:
+        if not part_number:
+            return DocumentState()
+        inspection_result = inspection_results.get(part_number)
+        return DocumentState(
+            status=inspection_result.status if inspection_result else "not_checked",
+            url=inspection_result.url if inspection_result else None,
         )
 
     def _drawing_state(self, machine_id: str, part_number: str | None) -> DocumentState:

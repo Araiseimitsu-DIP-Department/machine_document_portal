@@ -194,7 +194,6 @@ svg {
   letter-spacing: 0.12em;
 }
 .page-title { margin: 0; font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 650; letter-spacing: -0.025em; }
-.page-description { margin: 0.35rem 0 0; color: var(--color-text-secondary); font-size: 0.9rem; }
 .page-actions { display: flex; align-items: center; gap: 1rem; flex: 0 0 auto; }
 .updated-summary {
   display: flex;
@@ -205,6 +204,20 @@ svg {
   font-variant-numeric: tabular-nums;
 }
 .updated-label { color: var(--color-text-tertiary); font-size: 0.7rem; }
+.refresh-action {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  max-width: 18rem;
+}
+.refresh-guidance {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: center;
+}
 
 .btn {
   display: inline-flex;
@@ -506,6 +519,7 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
   .page-actions { justify-content: space-between; }
   .updated-summary { align-items: flex-start; }
   .btn-refresh { min-height: 3.25rem; }
+  .refresh-action { max-width: 14rem; }
   .overview-board { grid-template-columns: 1fr; }
   .overview-legend { justify-content: flex-start; }
   .drawing-viewer-header { align-items: stretch; flex-direction: column; }
@@ -517,7 +531,6 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
   .page-overview { padding: 0.75rem 1rem; }
   .page-overview .page-header { align-items: center; margin-bottom: 0.55rem; }
   .page-overview .page-eyebrow,
-  .page-overview .page-description { display: none; }
   .page-overview .page-title { font-size: 1.25rem; }
   .page-overview .btn-refresh { min-height: 2.4rem; padding-block: 0.35rem; }
   .page-overview .notice { margin-bottom: 0.55rem; padding: 0.4rem 0.7rem; font-size: 0.7rem; }
