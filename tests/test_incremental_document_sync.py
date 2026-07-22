@@ -1,7 +1,10 @@
 from collections.abc import Iterable
 
 from app.config import Settings
-from app.services.google_drive_service import DocumentSearchResult
+from app.services.google_drive_service import (
+    DocumentCandidateResult,
+    DocumentSearchResult,
+)
 from app.services.google_sheets_memory_sync_service import GoogleSheetsMemorySyncService
 from app.services.memory_store import MemoryDashboardStore
 from app.services.spreadsheet_service import ProductionRecord, SpreadsheetGateway
@@ -112,3 +115,53 @@ def test_document_refresh_rechecks_all_parts_without_reading_google(tmp_path) ->
     ]
     assert drawing_service.calls == ["AB-100", "AB-200", "AB-100", "AB-200"]
     assert len(store.get_dashboard().machines) == 2
+
+
+class RelatedInspectionService:
+    def search_many(self, part_numbers) -> dict[str, DocumentSearchResult]:
+        return {
+            part_number: DocumentSearchResult(
+                status="multiple",
+                candidates=(
+                    DocumentCandidateResult(
+                        name=f"{part_number}-1.xlsx",
+                        url="https://example.com/inspection-1",
+                        location="Vendor A",
+                    ),
+                    DocumentCandidateResult(
+                        name=f"{part_number}-2.xlsx",
+                        url="https://example.com/inspection-2",
+                        location="Vendor B",
+                    ),
+                ),
+            )
+            for part_number in part_numbers
+        }
+
+
+def test_multiple_inspection_files_link_to_machine_selection_page(tmp_path) -> None:
+    settings = Settings(
+        persistence_mode="memory",
+        use_sample_data=False,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
+    )
+    store = MemoryDashboardStore(settings)
+    service = GoogleSheetsMemorySyncService(
+        settings,
+        store,
+        gateway=MutableGateway(
+            [ProductionRecord("E-4", "T798129", "Product", "running")]
+        ),
+        inspection_service=RelatedInspectionService(),
+        drawing_service=RecordingDrawingService(),
+    )
+
+    service.sync()
+
+    inspection = store.get_dashboard().machines[0].inspection
+    assert inspection.status == "found"
+    assert inspection.url == "/inspections/E-4"
+    assert [candidate.name for candidate in inspection.candidates] == [
+        "T798129-1.xlsx",
+        "T798129-2.xlsx",
+    ]

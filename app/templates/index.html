@@ -20,6 +20,9 @@
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <path d="M14 2v6h6M8 13h8M8 17h5"/>
       </svg>
+      {% if document.candidates|length > 1 %}
+      <span class="machine-doc-count" aria-hidden="true">{{ document.candidates|length }}</span>
+      {% endif %}
     </a>
     {% else %}
     <button
@@ -53,17 +56,19 @@
       <h1 class="page-title">稼働中工程内検査シート</h1>
     </div>
     <div class="page-actions">
-      <div class="updated-summary">
-        <span class="updated-label">最終更新</span>
-        <time data-dashboard-updated>
-          {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at|format_jst('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
-        </time>
-      </div>
       <div class="refresh-action">
-        <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 4v4h-4"/></svg>
-          <span>最新情報に更新</span>
-        </button>
+        <div class="refresh-controls">
+          <button class="btn btn-primary btn-refresh" type="button" data-refresh-button>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66L20 8"/><path d="M20 4v4h-4"/></svg>
+            <span>最新情報に更新</span>
+          </button>
+          <div class="updated-summary">
+            <span class="updated-label">最終更新</span>
+            <time data-dashboard-updated>
+              {% if dashboard.last_updated_at %}{{ dashboard.last_updated_at|format_jst('%Y/%m/%d %H:%M') }}{% else %}未取得{% endif %}
+            </time>
+          </div>
+        </div>
         <p class="refresh-guidance">工程内検査シート・加工図面を更新するときに押してください。</p>
       </div>
     </div>

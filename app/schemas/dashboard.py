@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 DocumentStatus = Literal[
@@ -16,9 +16,24 @@ DocumentStatus = Literal[
 ]
 
 
+class DocumentCandidate(BaseModel):
+    name: str = Field(min_length=1)
+    url: str
+    location: str | None = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_external_url(cls, value: str) -> str:
+        parsed_url = urlsplit(value)
+        if parsed_url.scheme.lower() not in {"http", "https"} or not parsed_url.netloc:
+            raise ValueError("Document candidate URL must use HTTP or HTTPS")
+        return value
+
+
 class DocumentState(BaseModel):
     status: DocumentStatus = "not_checked"
     url: str | None = None
+    candidates: tuple[DocumentCandidate, ...] = ()
 
     @model_validator(mode="after")
     def validate_external_url(self) -> "DocumentState":

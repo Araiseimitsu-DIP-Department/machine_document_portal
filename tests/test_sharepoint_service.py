@@ -38,8 +38,11 @@ def test_sharepoint_matches_literal_filename_stems_and_ignores_folders() -> None
         ("AB-100", "AB-200", "AB-300", "ab-100", "ＡＢ－１００", "AB 100")
     )
 
-    assert result["AB-100"].status == "found"
-    assert result["AB-100"].url == "https://example.com/ab"
+    assert result["AB-100"].status == "multiple"
+    assert [candidate.name for candidate in result["AB-100"].candidates] == [
+        "AB-100.xlsx",
+        "AB-100-1.xlsx",
+    ]
     assert result["AB-200"].status == "found"
     assert result["AB-300"].status == "not_found"
     assert result["ab-100"].status == "not_found"
@@ -133,7 +136,66 @@ def test_sharepoint_recursively_searches_nested_folders_and_detects_duplicates()
     result = service.search_many(("AB-100", "CD-200"))
 
     assert result["AB-100"].status == "multiple"
-    assert set(result["AB-100"].candidates) == {"AB-100.xlsx", "AB-100.xlsm"}
+    assert {candidate.name for candidate in result["AB-100"].candidates} == {
+        "AB-100.xlsx",
+        "AB-100.xlsm",
+    }
+    assert {candidate.location for candidate in result["AB-100"].candidates} == {
+        "A",
+        "B",
+    }
     assert result["CD-200"].status == "found"
     assert result["CD-200"].url == "https://example.com/c/cd-200"
+    assert result["CD-200"].candidates[0].location == "A/C"
     assert sum(path.endswith("/items/sub-c/children") for path in requested_paths) == 1
+
+
+def test_sharepoint_prefers_active_exact_part_numbers_over_related_suffixes() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "login.microsoftonline.com":
+            return httpx.Response(200, json={"access_token": "token"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": "file-1",
+                        "name": "AB-100-1.xlsx",
+                        "webUrl": "https://example.com/ab-100-1",
+                        "file": {},
+                    },
+                    {
+                        "id": "file-2",
+                        "name": "AB-100-1-2.xlsx",
+                        "webUrl": "https://example.com/ab-100-1-2",
+                        "file": {},
+                    },
+                    {
+                        "id": "file-3",
+                        "name": "AB-100-1-10.xlsx",
+                        "webUrl": "https://example.com/ab-100-1-10",
+                        "file": {},
+                    },
+                    {
+                        "id": "file-4",
+                        "name": "AB-100-1-01.xlsx",
+                        "webUrl": "https://example.com/ab-100-1-01",
+                        "file": {},
+                    },
+                ]
+            },
+        )
+
+    service = SharePointService(
+        configured_settings(), transport=httpx.MockTransport(handler)
+    )
+
+    result = service.search_many(("AB-100", "AB-100-1"))
+
+    assert result["AB-100"].status == "not_found"
+    assert result["AB-100-1"].status == "multiple"
+    assert [candidate.name for candidate in result["AB-100-1"].candidates] == [
+        "AB-100-1.xlsx",
+        "AB-100-1-2.xlsx",
+        "AB-100-1-10.xlsx",
+    ]

@@ -2,11 +2,18 @@ from dataclasses import dataclass
 from typing import Protocol
 
 
+@dataclass(frozen=True, slots=True)
+class DocumentCandidateResult:
+    name: str
+    url: str
+    location: str | None = None
+
+
 @dataclass(slots=True)
 class DocumentSearchResult:
     status: str
     url: str | None = None
-    candidates: tuple[str, ...] = ()
+    candidates: tuple[DocumentCandidateResult, ...] = ()
 
 
 class DrawingGateway(Protocol):

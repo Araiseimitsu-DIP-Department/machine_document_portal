@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict, deque
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -10,7 +11,10 @@ from urllib.parse import quote
 import httpx
 
 from app.config import Settings
-from app.services.google_drive_service import DocumentSearchResult
+from app.services.google_drive_service import (
+    DocumentCandidateResult,
+    DocumentSearchResult,
+)
 
 
 class SharePointError(Exception):
@@ -33,6 +37,7 @@ class SharePointRequestError(SharePointError):
 class _SharePointFile:
     name: str
     url: str
+    location: str | None = None
 
 
 class SharePointService:
@@ -62,7 +67,7 @@ class SharePointService:
         )
 
     def search(self, part_number: str) -> DocumentSearchResult:
-        """Look up one exact filename stem for callers that need a single result."""
+        """Look up exact and numbered related filename stems for one part number."""
 
         return self.search_many((part_number,)).get(
             part_number,
@@ -72,7 +77,7 @@ class SharePointService:
     def search_many(
         self, part_numbers: Iterable[str]
     ) -> dict[str, DocumentSearchResult]:
-        """Match unmodified filename stems to part numbers after one folder-list request."""
+        """Match literal part numbers and positive-integer filename suffixes."""
 
         part_numbers = {
             part_number
@@ -101,8 +106,20 @@ class SharePointService:
                 filename_stem = PurePath(file.name).stem
                 if filename_stem in part_numbers:
                     matches[filename_stem].append(file)
+                    continue
+                for part_number in part_numbers:
+                    prefix = f"{part_number}-"
+                    if not filename_stem.startswith(prefix):
+                        continue
+                    suffix = filename_stem[len(prefix) :]
+                    if re.fullmatch(r"[1-9][0-9]*", suffix):
+                        matches[part_number].append(file)
+                        break
             return {
-                part_number: self._result_for_matches(matches[part_number])
+                part_number: self._result_for_matches(
+                    part_number,
+                    matches[part_number],
+                )
                 for part_number in part_numbers
             }
 
@@ -112,14 +129,44 @@ class SharePointService:
         }
 
     @staticmethod
-    def _result_for_matches(matches: list[_SharePointFile]) -> DocumentSearchResult:
+    def _result_for_matches(
+        part_number: str,
+        matches: list[_SharePointFile],
+    ) -> DocumentSearchResult:
         if not matches:
             return DocumentSearchResult(status="not_found")
+        matches.sort(
+            key=lambda file: SharePointService._match_sort_key(part_number, file)
+        )
+        candidates = tuple(
+            DocumentCandidateResult(
+                name=file.name,
+                url=file.url,
+                location=file.location,
+            )
+            for file in matches
+        )
         if len(matches) > 1:
             return DocumentSearchResult(
-                status="multiple", candidates=tuple(file.name for file in matches)
+                status="multiple",
+                candidates=candidates,
             )
-        return DocumentSearchResult(status="found", url=matches[0].url)
+        return DocumentSearchResult(
+            status="found",
+            url=matches[0].url,
+            candidates=candidates,
+        )
+
+    @staticmethod
+    def _match_sort_key(
+        part_number: str,
+        file: _SharePointFile,
+    ) -> tuple[int, int, str, str, str]:
+        filename_stem = PurePath(file.name).stem
+        if filename_stem == part_number:
+            return (0, 0, file.name, file.location or "", file.url)
+        suffix = filename_stem[len(part_number) + 1 :]
+        return (1, int(suffix), file.name, file.location or "", file.url)
 
     def _list_files(self) -> list[_SharePointFile]:
         with httpx.Client(timeout=15.0, transport=self.transport) as client:
@@ -127,12 +174,12 @@ class SharePointService:
             headers = {"Authorization": f"Bearer {token}"}
             drive_id = quote(self.settings.sharepoint_drive_id or "", safe="")
             root_folder_id = self.settings.sharepoint_folder_id or ""
-            pending_folder_ids = deque([root_folder_id])
+            pending_folders = deque([(root_folder_id, "")])
             visited_folder_ids: set[str] = set()
             files: list[_SharePointFile] = []
 
-            while pending_folder_ids:
-                folder_id = pending_folder_ids.popleft()
+            while pending_folders:
+                folder_id, folder_location = pending_folders.popleft()
                 if folder_id in visited_folder_ids:
                     continue
                 visited_folder_ids.add(folder_id)
@@ -160,14 +207,28 @@ class SharePointService:
                         item_id = item.get("id")
                         if "folder" in item and isinstance(item_id, str):
                             if item_id not in visited_folder_ids:
-                                pending_folder_ids.append(item_id)
+                                folder_name = item.get("name")
+                                child_location = folder_location
+                                if isinstance(folder_name, str) and folder_name:
+                                    child_location = "/".join(
+                                        value
+                                        for value in (folder_location, folder_name)
+                                        if value
+                                    )
+                                pending_folders.append((item_id, child_location))
                             continue
                         if "file" not in item:
                             continue
                         name = item.get("name")
                         web_url = item.get("webUrl")
                         if isinstance(name, str) and isinstance(web_url, str):
-                            files.append(_SharePointFile(name=name, url=web_url))
+                            files.append(
+                                _SharePointFile(
+                                    name=name,
+                                    url=web_url,
+                                    location=folder_location or None,
+                                )
+                            )
                     candidate = payload.get("@odata.nextLink")
                     next_url = candidate if isinstance(candidate, str) else None
                     params = None

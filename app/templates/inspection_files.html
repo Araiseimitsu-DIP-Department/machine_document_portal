@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ machine.machine_id }}_{{ machine.part_number }}_工程内検査シート | {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page inspection-files-page">
+  <header class="inspection-files-header">
+    <div>
+      <p class="page-eyebrow">MACHINE DOCUMENT PORTAL</p>
+      <h1 class="page-title">工程内検査シート</h1>
+      <p class="inspection-files-summary">
+        {{ machine.machine_id }}・{{ machine.part_number }}に関連する{{ machine.inspection.candidates|length }}件のファイル
+      </p>
+    </div>
+    <a class="btn inspection-back-button" href="/">号機一覧に戻る</a>
+  </header>
+
+  <div class="inspection-file-list" aria-label="{{ machine.part_number }}の工程内検査シート一覧">
+    {% for candidate in machine.inspection.candidates %}
+    <article class="inspection-file-item">
+      <div class="inspection-file-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+      </div>
+      <div class="inspection-file-details">
+        <h2>{{ candidate.name }}</h2>
+        <p>{{ candidate.location or '設定フォルダ直下' }}</p>
+      </div>
+      <a
+        class="btn btn-primary inspection-file-open"
+        href="{{ candidate.url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="{{ candidate.name }}をSharePointで開く"
+      >開く</a>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

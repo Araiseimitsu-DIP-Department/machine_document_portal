@@ -1,5 +1,8 @@
+import pytest
+from pydantic import ValidationError
+
 from app.config import Settings
-from app.schemas.dashboard import DocumentState
+from app.schemas.dashboard import DocumentCandidate, DocumentState
 from app.services.document_service import DocumentService
 from app.services.memory_store import MemoryDashboardStore
 from app.services.production_service import ProductionService
@@ -31,6 +34,11 @@ def test_unsafe_document_url_is_not_exposed() -> None:
     state = DocumentState(status="found", url="javascript:alert(1)")
     assert state.status == "not_checked"
     assert state.url is None
+
+
+def test_unsafe_candidate_url_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        DocumentCandidate(name="AB-100-1.xlsx", url="javascript:alert(1)")
 
 
 def test_safe_local_document_url_is_exposed() -> None:

@@ -1,5 +1,5 @@
 from app.config import Settings
-from app.schemas.dashboard import DocumentState, MachineCard
+from app.schemas.dashboard import DocumentCandidate, DocumentState, MachineCard
 from app.services.memory_store import MemoryDashboardStore
 
 
@@ -50,7 +50,20 @@ def test_dashboard_snapshot_is_loaded_after_process_store_recreation(tmp_path) -
                 machine_number=1,
                 part_number="AB-100",
                 inspection=DocumentState(
-                    status="found", url="https://example.com/inspection"
+                    status="found",
+                    url="/inspections/A-1",
+                    candidates=(
+                        DocumentCandidate(
+                            name="AB-100-1.xlsx",
+                            url="https://example.com/inspection-1",
+                            location="Vendor A",
+                        ),
+                        DocumentCandidate(
+                            name="AB-100-2.xlsx",
+                            url="https://example.com/inspection-2",
+                            location="Vendor B",
+                        ),
+                    ),
                 ),
             )
         ]
@@ -60,6 +73,8 @@ def test_dashboard_snapshot_is_loaded_after_process_store_recreation(tmp_path) -
 
     assert restored.machines[0].part_number == "AB-100"
     assert restored.machines[0].inspection.available is True
+    assert len(restored.machines[0].inspection.candidates) == 2
+    assert restored.machines[0].inspection.candidates[1].location == "Vendor B"
     assert restored.source_label == "メモリ（前回保存）"
 
 

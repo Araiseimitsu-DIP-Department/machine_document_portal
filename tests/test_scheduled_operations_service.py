@@ -6,7 +6,10 @@ from pathlib import Path
 import pytest
 
 from app.config import Settings
-from app.services.google_drive_service import DocumentSearchResult
+from app.services.google_drive_service import (
+    DocumentCandidateResult,
+    DocumentSearchResult,
+)
 from app.services.nas_drawing_service import NasDrawingService
 from app.services.next_day_sheet_service import SheetInfo
 from app.services.pdf_print_service import PdfPrintError
@@ -30,13 +33,28 @@ class FakeInspectionService:
     configured = True
 
     def search_many(self, part_numbers) -> dict[str, DocumentSearchResult]:
-        return {
-            part_number: DocumentSearchResult(
-                status="found" if part_number == "AB-100" else "not_found",
-                url="https://example.com/inspection" if part_number == "AB-100" else None,
-            )
-            for part_number in part_numbers
-        }
+        results: dict[str, DocumentSearchResult] = {}
+        for part_number in part_numbers:
+            if part_number == "AB-100":
+                results[part_number] = DocumentSearchResult(
+                    status="found",
+                    url="https://example.com/inspection",
+                )
+            else:
+                results[part_number] = DocumentSearchResult(
+                    status="multiple",
+                    candidates=(
+                        DocumentCandidateResult(
+                            name=f"{part_number}-1.xlsx",
+                            url="https://example.com/inspection-1",
+                        ),
+                        DocumentCandidateResult(
+                            name=f"{part_number}-2.xlsx",
+                            url="https://example.com/inspection-2",
+                        ),
+                    ),
+                )
+        return results
 
 
 class FakeAraichatService:
@@ -103,6 +121,7 @@ def test_notification_and_printing_are_not_repeated_on_the_weekend(tmp_path) -> 
     assert saturday_check.status == "already_processed"
     assert saturday_print.status == "already_processed"
     assert len(chat.messages) == 1
+    assert chat.messages[0][0].count("CD-200") == 1
     assert "・CD-200" in chat.messages[0][0]
     assert "加工図面未アップロードリスト:\n・CD-200" in chat.messages[0][0]
     assert printer.printed == ["AB-100"]

@@ -116,7 +116,7 @@ class ScheduledOperationsService:
             part_number
             for part_number in part_numbers
             if inspection_results.get(part_number) is None
-            or inspection_results[part_number].status in {"not_found", "multiple"}
+            or inspection_results[part_number].status == "not_found"
         ]
         missing_drawings: list[str] = []
         self._ensure_drawing_directory_available()

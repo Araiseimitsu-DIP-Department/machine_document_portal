@@ -5,7 +5,7 @@ from threading import Lock
 from urllib.parse import quote
 
 from app.config import Settings
-from app.schemas.dashboard import DocumentState, MachineCard
+from app.schemas.dashboard import DocumentCandidate, DocumentState, MachineCard
 from app.services.google_drive_service import DocumentSearchResult
 from app.services.memory_store import MemoryDashboardStore
 from app.services.nas_drawing_service import NasDrawingAccessError, NasDrawingService
@@ -96,6 +96,7 @@ class GoogleSheetsMemorySyncService:
                     machine.model_copy(
                         update={
                             "inspection": self._inspection_state(
+                                machine.machine_id,
                                 machine.part_number,
                                 inspection_results,
                             ),
@@ -170,6 +171,7 @@ class GoogleSheetsMemorySyncService:
             if documents_changed:
                 drawing = self._drawing_state(record.machine_id, record.part_number)
                 inspection = self._inspection_state(
+                    record.machine_id,
                     record.part_number,
                     inspection_results,
                 )
@@ -208,15 +210,33 @@ class GoogleSheetsMemorySyncService:
 
     @staticmethod
     def _inspection_state(
+        machine_id: str,
         part_number: str | None,
         inspection_results: dict[str, DocumentSearchResult],
     ) -> DocumentState:
         if not part_number:
             return DocumentState()
         inspection_result = inspection_results.get(part_number)
+        if inspection_result is None:
+            return DocumentState()
+        candidates = tuple(
+            DocumentCandidate(
+                name=candidate.name,
+                url=candidate.url,
+                location=candidate.location,
+            )
+            for candidate in inspection_result.candidates
+        )
+        if inspection_result.status == "multiple" and candidates:
+            return DocumentState(
+                status="found",
+                url=f"/inspections/{quote(machine_id, safe='')}",
+                candidates=candidates,
+            )
         return DocumentState(
-            status=inspection_result.status if inspection_result else "not_checked",
-            url=inspection_result.url if inspection_result else None,
+            status=inspection_result.status,
+            url=inspection_result.url,
+            candidates=candidates,
         )
 
     def _drawing_state(self, machine_id: str, part_number: str | None) -> DocumentState:
