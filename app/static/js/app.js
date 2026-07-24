@@ -12,19 +12,9 @@
     document.body.dataset.dashboardRevisionPollSeconds || "0",
     10,
   );
-  const drawingViewerImage = document.querySelector("[data-drawing-viewer-image]");
-  const drawingViewerBody = document.querySelector(".drawing-viewer-body");
-  const drawingViewerZoomIn = document.querySelector("[data-drawing-viewer-zoom-in]");
-  const drawingViewerZoomOut = document.querySelector("[data-drawing-viewer-zoom-out]");
-  const drawingViewerZoomReset = document.querySelector("[data-drawing-viewer-zoom-reset]");
-  const drawingViewerZoomStorageKey = `machine-portal-drawing-zoom:${window.location.pathname}`;
   const groupColumns = Array.from(document.querySelectorAll("details.group-column"));
   const mobileViewport = window.matchMedia("(max-width: 680px)");
   const printSubmitForms = document.querySelectorAll("[data-print-submit-form]");
-  let drawingViewerZoom = 100;
-  let pinchStartDistance = 0;
-  let pinchStartZoom = 100;
-  let drawingViewerPan = null;
   let mobileGroupOpenStates = null;
   let userOperationInProgress = false;
   let reloadPending = false;
@@ -235,100 +225,4 @@
     });
   }
 
-  const setDrawingViewerZoom = (nextZoom) => {
-    if (!drawingViewerImage) return;
-    const numericZoom = Number(nextZoom);
-    drawingViewerZoom = Number.isFinite(numericZoom)
-      ? Math.min(300, Math.max(50, Math.round(numericZoom)))
-      : 100;
-    drawingViewerImage.style.width = `${drawingViewerZoom}%`;
-    if (drawingViewerZoomReset) drawingViewerZoomReset.textContent = `${drawingViewerZoom}%`;
-    if (drawingViewerZoomIn) drawingViewerZoomIn.disabled = drawingViewerZoom >= 300;
-    if (drawingViewerZoomOut) drawingViewerZoomOut.disabled = drawingViewerZoom <= 50;
-    window.requestAnimationFrame(() => {
-      if (!drawingViewerBody) return;
-      const hasOverflow = drawingViewerBody.scrollWidth > drawingViewerBody.clientWidth
-        || drawingViewerBody.scrollHeight > drawingViewerBody.clientHeight;
-      drawingViewerBody.classList.toggle("is-pannable", hasOverflow);
-    });
-    try {
-      window.sessionStorage.setItem(drawingViewerZoomStorageKey, String(drawingViewerZoom));
-    } catch (_error) {
-      // Storage can be unavailable in restricted browser modes; zoom still works for this page.
-    }
-  };
-
-  if (drawingViewerImage) {
-    let restoredZoom = 100;
-    try {
-      const storedZoom = window.sessionStorage.getItem(drawingViewerZoomStorageKey);
-      if (storedZoom !== null && Number.isFinite(Number(storedZoom))) {
-        restoredZoom = Number(storedZoom);
-      }
-    } catch (_error) {
-      // Use the default when session storage cannot be read.
-    }
-    setDrawingViewerZoom(restoredZoom);
-  }
-
-  drawingViewerZoomIn?.addEventListener("click", () => setDrawingViewerZoom(drawingViewerZoom + 25));
-  drawingViewerZoomOut?.addEventListener("click", () => setDrawingViewerZoom(drawingViewerZoom - 25));
-  drawingViewerZoomReset?.addEventListener("click", () => setDrawingViewerZoom(100));
-
-  if (drawingViewerBody && drawingViewerImage) {
-    const touchDistance = (touches) => Math.hypot(
-      touches[0].clientX - touches[1].clientX,
-      touches[0].clientY - touches[1].clientY,
-    );
-    drawingViewerBody.addEventListener("touchstart", (event) => {
-      if (event.touches.length !== 2) return;
-      pinchStartDistance = touchDistance(event.touches);
-      pinchStartZoom = drawingViewerZoom;
-    }, { passive: true });
-    drawingViewerBody.addEventListener("touchmove", (event) => {
-      if (event.touches.length !== 2 || pinchStartDistance === 0) return;
-      event.preventDefault();
-      setDrawingViewerZoom(pinchStartZoom * touchDistance(event.touches) / pinchStartDistance);
-    }, { passive: false });
-    drawingViewerBody.addEventListener("touchend", (event) => {
-      if (event.touches.length < 2) pinchStartDistance = 0;
-    }, { passive: true });
-
-    drawingViewerBody.addEventListener("pointerdown", (event) => {
-      if (
-        event.pointerType !== "mouse"
-        || event.button !== 0
-        || !drawingViewerBody.classList.contains("is-pannable")
-      ) return;
-      drawingViewerPan = {
-        pointerId: event.pointerId,
-        clientX: event.clientX,
-        clientY: event.clientY,
-        scrollLeft: drawingViewerBody.scrollLeft,
-        scrollTop: drawingViewerBody.scrollTop,
-      };
-      drawingViewerBody.setPointerCapture(event.pointerId);
-      drawingViewerBody.classList.add("is-panning");
-      event.preventDefault();
-    });
-    drawingViewerBody.addEventListener("pointermove", (event) => {
-      if (!drawingViewerPan || event.pointerId !== drawingViewerPan.pointerId) return;
-      drawingViewerBody.scrollLeft = drawingViewerPan.scrollLeft
-        - (event.clientX - drawingViewerPan.clientX);
-      drawingViewerBody.scrollTop = drawingViewerPan.scrollTop
-        - (event.clientY - drawingViewerPan.clientY);
-    });
-    const stopDrawingViewerPan = (event) => {
-      if (!drawingViewerPan || event.pointerId !== drawingViewerPan.pointerId) return;
-      if (drawingViewerBody.hasPointerCapture(event.pointerId)) {
-        drawingViewerBody.releasePointerCapture(event.pointerId);
-      }
-      drawingViewerPan = null;
-      drawingViewerBody.classList.remove("is-panning");
-    };
-    drawingViewerBody.addEventListener("pointerup", stopDrawingViewerPan);
-    drawingViewerBody.addEventListener("pointercancel", stopDrawingViewerPan);
-    drawingViewerImage.addEventListener("load", () => setDrawingViewerZoom(drawingViewerZoom));
-    window.addEventListener("resize", () => setDrawingViewerZoom(drawingViewerZoom));
-  }
 })();

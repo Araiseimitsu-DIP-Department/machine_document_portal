@@ -108,9 +108,11 @@ def test_drawing_viewer_opens_as_a_separate_page() -> None:
     assert response.status_code == 200
     assert "<title>A-1_AX-1200-01_加工図面</title>" in response.text
     assert "A-1_AX-1200-01_加工図面" in response.text
-    assert 'data-drawing-viewer-image' in response.text
-    assert 'src="/api/drawings/A-1/preview"' in response.text
-    assert "タッチ端末では2本指でも拡大・縮小できます" in response.text
+    assert 'data-drawing-viewer-canvas' in response.text
+    assert 'data-pdf-url="/api/drawings/A-1/pdf"' in response.text
+    assert 'data-preview-url="/api/drawings/A-1/preview"' in response.text
+    assert "/static/js/drawing_viewer.js" in response.text
+    assert "タッチ：2本指で拡大・縮小" in response.text
 
 
 def test_multiple_inspection_files_are_listed_on_a_separate_page() -> None:
@@ -255,6 +257,11 @@ def test_pwa_and_icon_static_assets_are_served() -> None:
         "/static/icons/icon-192.png",
         "/static/icons/icon-512.png",
         "/static/icons/machine_document_portal.png",
+        "/static/vendor/pdfjs/pdf.min.mjs",
+        "/static/vendor/pdfjs/pdf.worker.min.mjs",
+        "/static/vendor/pdfjs/legacy/pdf.min.mjs",
+        "/static/vendor/pdfjs/legacy/pdf.worker.min.mjs",
+        "/static/vendor/pdfjs/LICENSE",
     ]
     with TestClient(app) as client:
         for path in paths:

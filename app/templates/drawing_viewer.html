@@ -8,6 +8,7 @@
   {% include "includes/pwa_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ static_assets_version }}">
   <script defer src="{{ url_for('static', path='/js/app.js') }}?v={{ static_assets_version }}"></script>
+  <script type="module" src="{{ url_for('static', path='/js/drawing_viewer.js') }}?v={{ static_assets_version }}"></script>
 </head>
 <body class="drawing-viewer-page">
   <main class="drawing-viewer" aria-label="{{ machine.machine_id }} {{ machine.part_number }} 加工図面">
@@ -22,16 +23,34 @@
           <button class="btn" type="button" title="表示倍率を100%に戻す" data-drawing-viewer-zoom-reset>100%</button>
           <button class="btn" type="button" data-drawing-viewer-zoom-in>拡大</button>
         </div>
-        <p class="drawing-viewer-help">マウス：ドラッグで移動 ／ タッチ端末では2本指でも拡大・縮小できます</p>
+        <p class="drawing-viewer-help">マウス：ホイールで拡大・縮小／ドラッグで移動　タッチ：2本指で拡大・縮小</p>
       </div>
     </header>
-    <div class="drawing-viewer-body">
+    <div
+      class="drawing-viewer-body"
+      data-drawing-viewer
+      data-pdf-url="{{ pdf_url }}"
+      data-preview-url="{{ preview_url }}"
+      data-static-assets-version="{{ static_assets_version }}"
+      data-debug="{{ 'true' if debug else 'false' }}"
+    >
+      <p class="drawing-viewer-status" role="status" data-drawing-viewer-status>
+        図面を読み込んでいます…
+      </p>
+      <div class="drawing-viewer-stage" data-drawing-viewer-stage hidden>
+        <canvas
+          class="drawing-viewer-image"
+          role="img"
+          aria-label="{{ machine.machine_id }} {{ machine.part_number }} 加工図面"
+          data-drawing-viewer-canvas
+        ></canvas>
+      </div>
       <img
-        class="drawing-viewer-image"
-        src="{{ preview_url }}"
+        class="drawing-viewer-image drawing-viewer-fallback"
         alt="{{ machine.machine_id }} {{ machine.part_number }} 加工図面"
         draggable="false"
-        data-drawing-viewer-image
+        data-drawing-viewer-fallback
+        hidden
       >
     </div>
   </main>

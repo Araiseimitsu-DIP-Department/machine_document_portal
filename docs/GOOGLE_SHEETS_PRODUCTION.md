@@ -26,9 +26,11 @@ Never commit the key file. The `secrets/` directory is ignored by Git.
 
 ## NAS drawings
 
-Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The application looks for an exact filename match with the part number in column H, adding `.pdf` when the part number has no extension. When the user selects the drawing button, the application opens a dedicated browser tab and renders the first page as a JPEG preview; the PDF and NAS path are not exposed to the browser. Generated previews are cached while the application runs.
+Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The application looks for an exact filename match with the part number in column H, adding `.pdf` when the part number has no extension. When the user selects the drawing button, the application opens a dedicated browser tab and renders the first page in the browser with the locally bundled PDF.js 5.7.284. The NAS path is never exposed. The authenticated application endpoint returns only the current machine's PDF with private one-hour browser caching, validators, and byte-range support.
 
-The separate-tab first-page preview is the current display mode. Split-screen display with the inspection sheet and multi-page navigation can be introduced later without changing the NAS lookup rule.
+PDF.js is the primary display and the application does not show a JPEG first. The existing JPEG preview is requested only if PDF loading or rendering fails; fallback previews remain cached in the application process. The separate-tab first-page view is the current display mode. Split-screen display with the inspection sheet and multi-page navigation can be introduced later without changing the NAS lookup rule.
+
+The PDF.js module, worker, CMaps, standard fonts, and WASM decoders are served locally without a CDN. Current Chrome/Edge use the modern build; Safari and Apple mobile devices use the matching legacy build. Before production rollout, verify representative large drawings on the actual Windows PC, iPhone, iPad, and Android tablet over the production Wi-Fi. Safari 16.4 or later and a current Android Chrome are recommended.
 
 The account that starts the application must have read permission for the NAS directory.
 

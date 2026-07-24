@@ -10,7 +10,16 @@ STATIC_ICONS_VERSION = "1"
 def _build_static_assets_version() -> str:
     digest = sha256()
     static_directory = Path(__file__).resolve().parent / "static"
-    for relative_path in ("css/style.css", "js/app.js", "manifest.json"):
+    for relative_path in (
+        "css/style.css",
+        "js/app.js",
+        "js/drawing_viewer.js",
+        "manifest.json",
+        "vendor/pdfjs/pdf.min.mjs",
+        "vendor/pdfjs/pdf.worker.min.mjs",
+        "vendor/pdfjs/legacy/pdf.min.mjs",
+        "vendor/pdfjs/legacy/pdf.worker.min.mjs",
+    ):
         digest.update((static_directory / relative_path).read_bytes())
     return digest.hexdigest()[:12]
 

@@ -165,7 +165,7 @@ def drawing_viewer(
     settings: SettingsDependency,
     session: DatabaseSessionDependency,
 ) -> HTMLResponse:
-    """Show a NAS drawing in its own browser tab without opening the PDF viewer."""
+    """Show a NAS drawing in its own browser tab with the in-app PDF.js viewer."""
 
     dashboard_data = ProductionService(settings, get_memory_store()).get_dashboard(session)
     machine = next(
@@ -179,7 +179,9 @@ def drawing_viewer(
         context={
             "app_name": settings.app_name,
             "machine": machine,
+            "pdf_url": f"/api/drawings/{quote(machine.machine_id, safe='')}/pdf",
             "preview_url": f"/api/drawings/{quote(machine.machine_id, safe='')}/preview",
+            "debug": settings.debug,
         },
     )
 
