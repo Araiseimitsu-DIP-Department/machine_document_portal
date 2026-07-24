@@ -44,6 +44,9 @@ def test_styles_cover_dynamic_viewports_safe_areas_and_touch_targets() -> None:
     assert "min-height: 2.75rem" in stylesheet
     assert ".group-column:not([open])" in stylesheet
     assert "touch-action: pan-x pan-y" in stylesheet
+    assert "grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)" in stylesheet
+    assert ".drawing-viewer-body.is-pannable" in stylesheet
+    assert ".drawing-viewer-body.is-panning" in stylesheet
 
 
 def test_client_script_controls_mobile_navigation_groups_and_pinch_zoom() -> None:
@@ -62,3 +65,15 @@ def test_client_script_controls_mobile_navigation_groups_and_pinch_zoom() -> Non
     assert "window.sessionStorage.getItem(drawingViewerZoomStorageKey)" in script
     assert "window.sessionStorage.setItem(drawingViewerZoomStorageKey" in script
     assert "setDrawingViewerZoom(restoredZoom)" in script
+    assert '"pointerdown"' in script
+    assert '"pointermove"' in script
+    assert "drawingViewerBody.scrollLeft" in script
+    assert "drawingViewerBody.scrollTop" in script
+
+
+def test_drawing_viewer_controls_are_consistent_and_support_mouse_panning() -> None:
+    drawing_template = read_project_file("app/templates/drawing_viewer.html")
+
+    assert 'class="btn btn-primary"' not in drawing_template
+    assert "マウス：ドラッグで移動" in drawing_template
+    assert 'draggable="false"' in drawing_template

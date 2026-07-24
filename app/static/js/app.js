@@ -24,6 +24,7 @@
   let drawingViewerZoom = 100;
   let pinchStartDistance = 0;
   let pinchStartZoom = 100;
+  let drawingViewerPan = null;
   let mobileGroupOpenStates = null;
   let userOperationInProgress = false;
   let reloadPending = false;
@@ -242,6 +243,14 @@
       : 100;
     drawingViewerImage.style.width = `${drawingViewerZoom}%`;
     if (drawingViewerZoomReset) drawingViewerZoomReset.textContent = `${drawingViewerZoom}%`;
+    if (drawingViewerZoomIn) drawingViewerZoomIn.disabled = drawingViewerZoom >= 300;
+    if (drawingViewerZoomOut) drawingViewerZoomOut.disabled = drawingViewerZoom <= 50;
+    window.requestAnimationFrame(() => {
+      if (!drawingViewerBody) return;
+      const hasOverflow = drawingViewerBody.scrollWidth > drawingViewerBody.clientWidth
+        || drawingViewerBody.scrollHeight > drawingViewerBody.clientHeight;
+      drawingViewerBody.classList.toggle("is-pannable", hasOverflow);
+    });
     try {
       window.sessionStorage.setItem(drawingViewerZoomStorageKey, String(drawingViewerZoom));
     } catch (_error) {
@@ -284,5 +293,42 @@
     drawingViewerBody.addEventListener("touchend", (event) => {
       if (event.touches.length < 2) pinchStartDistance = 0;
     }, { passive: true });
+
+    drawingViewerBody.addEventListener("pointerdown", (event) => {
+      if (
+        event.pointerType !== "mouse"
+        || event.button !== 0
+        || !drawingViewerBody.classList.contains("is-pannable")
+      ) return;
+      drawingViewerPan = {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        scrollLeft: drawingViewerBody.scrollLeft,
+        scrollTop: drawingViewerBody.scrollTop,
+      };
+      drawingViewerBody.setPointerCapture(event.pointerId);
+      drawingViewerBody.classList.add("is-panning");
+      event.preventDefault();
+    });
+    drawingViewerBody.addEventListener("pointermove", (event) => {
+      if (!drawingViewerPan || event.pointerId !== drawingViewerPan.pointerId) return;
+      drawingViewerBody.scrollLeft = drawingViewerPan.scrollLeft
+        - (event.clientX - drawingViewerPan.clientX);
+      drawingViewerBody.scrollTop = drawingViewerPan.scrollTop
+        - (event.clientY - drawingViewerPan.clientY);
+    });
+    const stopDrawingViewerPan = (event) => {
+      if (!drawingViewerPan || event.pointerId !== drawingViewerPan.pointerId) return;
+      if (drawingViewerBody.hasPointerCapture(event.pointerId)) {
+        drawingViewerBody.releasePointerCapture(event.pointerId);
+      }
+      drawingViewerPan = null;
+      drawingViewerBody.classList.remove("is-panning");
+    };
+    drawingViewerBody.addEventListener("pointerup", stopDrawingViewerPan);
+    drawingViewerBody.addEventListener("pointercancel", stopDrawingViewerPan);
+    drawingViewerImage.addEventListener("load", () => setDrawingViewerZoom(drawingViewerZoom));
+    window.addEventListener("resize", () => setDrawingViewerZoom(drawingViewerZoom));
   }
 })();

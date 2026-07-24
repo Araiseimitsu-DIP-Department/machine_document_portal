@@ -600,9 +600,9 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
   grid-template-rows: auto minmax(0, 1fr);
 }
 .drawing-viewer-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   padding:
     max(0.75rem, env(safe-area-inset-top))
@@ -612,11 +612,26 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
 }
+.drawing-viewer-title { min-width: 0; }
 .drawing-viewer-eyebrow { margin: 0 0 0.15rem; color: var(--color-accent); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; }
-.drawing-viewer-header h1 { margin: 0; font-size: clamp(1rem, 2vw, 1.35rem); }
-.drawing-viewer-actions { display: grid; justify-items: end; gap: 0.2rem; }
+.drawing-viewer-header h1 { margin: 0; overflow-wrap: anywhere; font-size: clamp(1rem, 2vw, 1.35rem); }
+.drawing-viewer-actions { display: grid; grid-column: 2; justify-items: center; gap: 0.2rem; }
 .drawing-viewer-controls { display: flex; flex: 0 0 auto; gap: 0.4rem; }
-.drawing-viewer-controls .btn { min-height: 2.75rem; padding-inline: 0.8rem; }
+.drawing-viewer-controls .btn {
+  min-height: 2.75rem;
+  padding-inline: 0.8rem;
+  border-color: var(--color-border);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+}
+.drawing-viewer-controls .btn:hover:not(:disabled) {
+  border-color: #c5d2df;
+  background: var(--color-surface-tertiary);
+}
+.drawing-viewer-controls .btn:focus-visible {
+  outline: 3px solid var(--color-accent-ring);
+  outline-offset: 2px;
+}
 .drawing-viewer-help { margin: 0; color: var(--color-text-secondary); font-size: 0.68rem; }
 .drawing-viewer-body {
   min-width: 0;
@@ -630,7 +645,18 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
   text-align: center;
   touch-action: pan-x pan-y;
 }
-.drawing-viewer-image { display: block; width: 100%; height: auto; max-width: none; margin: 0 auto; background: #fff; }
+.drawing-viewer-body.is-pannable { cursor: grab; }
+.drawing-viewer-body.is-panning { cursor: grabbing; user-select: none; }
+.drawing-viewer-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  margin: 0 auto;
+  background: #fff;
+  -webkit-user-drag: none;
+  user-select: none;
+}
 
 .sidebar-collapsed .sidebar { width: var(--sidebar-collapsed-width); }
 .sidebar-collapsed .app-content { margin-left: var(--sidebar-collapsed-width); }
@@ -855,7 +881,7 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .drawing-viewer-header { align-items: stretch; flex-direction: column; }
+  .drawing-viewer-header { display: flex; align-items: stretch; flex-direction: column; }
   .drawing-viewer-actions { justify-items: stretch; }
   .drawing-viewer-controls .btn { flex: 1; }
   .drawing-viewer-help { text-align: center; }

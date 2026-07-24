@@ -34,7 +34,7 @@ ScheduledOperationsService
 
 FastAPIは画面と操作APIを公開します。Jinja2、vanilla CSS、最小限のJavaScriptで構成します。
 
-ブラウザ向けの静的ファイルは `/static` で配信し、サイドバーの ARAI ロゴは `docs/DESIGN` を `/design-assets` としてマウントした画像を参照します。タブ用 favicon、ホーム画面用アイコン、Web App Manifest は `app/static/icons/` と `app/static/manifest.json` に置き、HTML の head は `app/templates/includes/pwa_head.html` で共通化します。タブ、ブックマーク、Apple向けWebアプリ名、Manifestの通常名・短縮名は「稼働中工程内検査シート」に統一します。表示名、テーマ色、アイコンキャッシュ版数、CSS・JavaScript・Manifestの内容ハッシュは `app/pwa.py` で管理します。Service Workerは使用せず、インストール後も画面の自動再読込や手動更新は通常のブラウザ表示と同じ `app/static/js/app.js` の処理です。
+ブラウザ向けの静的ファイルは `/static` で配信し、サイドバーの ARAI ロゴは `docs/DESIGN` を `/design-assets` としてマウントした画像を参照します。タブ用 favicon、ホーム画面用アイコン、Web App Manifest は `app/static/icons/` と `app/static/manifest.json` に置き、HTML の head は `app/templates/includes/pwa_head.html` で共通化します。号機一覧など共通画面のタブ、ブックマーク、Apple向けWebアプリ名、Manifestの通常名・短縮名は「稼働中工程内検査シート」に統一し、加工図の専用タブだけは「号機_品番_加工図面」とします。表示名、テーマ色、アイコンキャッシュ版数、CSS・JavaScript・Manifestの内容ハッシュは `app/pwa.py` で管理します。Service Workerは使用せず、インストール後も画面の自動再読込や手動更新は通常のブラウザ表示と同じ `app/static/js/app.js` の処理です。
 
 `app/main.py` はアプリの生成と起動・終了処理だけを担当し、バックグラウンド処理の時刻判定と実行制御は `app/scheduling.py` に分離します。これにより、HTTPアプリの初期化と定時処理を個別に確認・テストできます。
 
@@ -88,7 +88,7 @@ NAS PDF ───────┘
 
 加工図プレビューはPDFの更新日時とサイズをキーに、最大64件かつ128MiBまでアプリ内へキャッシュします。同じPDFへの同時アクセスは1回だけ変換し、他の要求はその結果を再利用します。
 
-現在の加工図表示は、専用の別タブで開く1ページ目JPEGプレビューです。ボタン操作とタッチ端末の2本指操作で50〜300%に拡大・縮小し、`100dvh`とセーフエリアを使ってモバイルブラウザの表示高さへ追従します。`NasDrawingPreviewService` を介しているため、工程内検査シートとの分割表示や複数ページ表示へ変更する際も、NAS検索・アクセス制御を保ったまま表示方式を差し替えられます。
+現在の加工図表示は、「号機_品番_加工図面」形式の専用タブで開く1ページ目JPEGプレビューです。ヘッダー中央のボタン操作とタッチ端末の2本指操作で50〜300%に拡大・縮小し、表示領域からはみ出した画像はPointer Eventsとスクロール位置を使ってマウスの左ドラッグで上下左右へ移動します。`100dvh`とセーフエリアを使ってモバイルブラウザの表示高さへ追従します。`NasDrawingPreviewService` を介しているため、工程内検査シートとの分割表示や複数ページ表示へ変更する際も、NAS検索・アクセス制御を保ったまま表示方式を差し替えられます。
 
 SharePoint連携はクライアント資格情報フローでMicrosoft Graphのアクセストークンを取得し、設定した `driveId` / `folderId` を起点に配下の全サブフォルダを幅優先で再帰走査します。各フォルダのページングを最後まで取得し、同じフォルダIDは重複走査しません。権限は `Sites.Selected` と対象サイトの `Read` に限定し、アプリからファイルの作成・更新・削除は行いません。
 

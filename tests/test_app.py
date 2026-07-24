@@ -106,7 +106,7 @@ def test_drawing_viewer_opens_as_a_separate_page() -> None:
     with TestClient(app) as client:
         response = client.get("/drawings/A-1")
     assert response.status_code == 200
-    assert "<title>稼働中工程内検査シート</title>" in response.text
+    assert "<title>A-1_AX-1200-01_加工図面</title>" in response.text
     assert "A-1_AX-1200-01_加工図面" in response.text
     assert 'data-drawing-viewer-image' in response.text
     assert 'src="/api/drawings/A-1/preview"' in response.text

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="{{ pwa_theme_color }}">
-  <title>{{ pwa_name }}</title>
+  <title>{{ machine.machine_id }}_{{ machine.part_number }}_加工図面</title>
   {% include "includes/pwa_head.html" %}
   <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ static_assets_version }}">
   <script defer src="{{ url_for('static', path='/js/app.js') }}?v={{ static_assets_version }}"></script>
@@ -12,17 +12,17 @@
 <body class="drawing-viewer-page">
   <main class="drawing-viewer" aria-label="{{ machine.machine_id }} {{ machine.part_number }} 加工図面">
     <header class="drawing-viewer-header">
-      <div>
+      <div class="drawing-viewer-title">
         <p class="drawing-viewer-eyebrow">MACHINE DOCUMENT PORTAL</p>
         <h1>{{ machine.machine_id }}_{{ machine.part_number }}_加工図面</h1>
       </div>
       <div class="drawing-viewer-actions">
         <div class="drawing-viewer-controls" aria-label="図面の拡大縮小">
           <button class="btn" type="button" data-drawing-viewer-zoom-out>縮小</button>
-          <button class="btn" type="button" data-drawing-viewer-zoom-reset>100%</button>
-          <button class="btn btn-primary" type="button" data-drawing-viewer-zoom-in>拡大</button>
+          <button class="btn" type="button" title="表示倍率を100%に戻す" data-drawing-viewer-zoom-reset>100%</button>
+          <button class="btn" type="button" data-drawing-viewer-zoom-in>拡大</button>
         </div>
-        <p class="drawing-viewer-help">タッチ端末では2本指でも拡大・縮小できます</p>
+        <p class="drawing-viewer-help">マウス：ドラッグで移動 ／ タッチ端末では2本指でも拡大・縮小できます</p>
       </div>
     </header>
     <div class="drawing-viewer-body">
@@ -30,6 +30,7 @@
         class="drawing-viewer-image"
         src="{{ preview_url }}"
         alt="{{ machine.machine_id }} {{ machine.part_number }} 加工図面"
+        draggable="false"
         data-drawing-viewer-image
       >
     </div>
