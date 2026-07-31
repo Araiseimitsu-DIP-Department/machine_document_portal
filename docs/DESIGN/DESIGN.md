@@ -123,11 +123,11 @@
 
 #### アプリアイコン（favicon・PWA）
 
-画面内ロゴとは別に、ブラウザタブ・ホーム画面・「アプリとしてインストール」用のアイコンを用意する。
+画面内ロゴとは別に、ブラウザタブ・ホーム画面用のアイコンを用意する。
 
 - マスター画像は `app/static/icons/machine_document_portal.png` とする。ここから favicon（`.ico`、16px、32px）、Apple Touch Icon（180px）、PWA 用（192px、512px）を生成して同フォルダに配置する。
 - ブラウザタブ、新規ブックマーク、Apple向けWebアプリ名、`app/static/manifest.json`の通常名・短縮名は「稼働中工程内検査シート」に統一する。
-- `app/static/manifest.json` で`display: standalone`を定義する。
+- `app/static/manifest.json` で`display: browser`を定義し、ホーム画面から通常ブラウザーで起動する。
 - HTMLのheadは`app/templates/includes/pwa_head.html`で共通化し、`application-name`と`apple-mobile-web-app-title`も同じ表示名にする。`theme-color`はブランド主色`#1e88e5`（`app/pwa.py`の`PWA_THEME_COLOR`と整合）、スプラッシュ用の`background_color`はダークブルー系（例`#0d1b2a`）とする。
 - アイコン差し替え時は`app/pwa.py`の`STATIC_ICONS_VERSION`を更新する。CSS、JavaScript、Manifestは内容から`STATIC_ASSETS_VERSION`を自動生成し、参照URLのキャッシュを更新する。
 - Service Worker は使用しない。業務画面のデータ更新・自動再読込は既存のサーバー同期と `app/static/js/app.js` に委ねる。

@@ -341,7 +341,7 @@ def test_manifest_json_contents() -> None:
     assert payload["name"] == "稼働中工程内検査シート"
     assert payload["short_name"] == "稼働中工程内検査シート"
     assert "数値検査用" in payload["description"]
-    assert payload["display"] == "standalone"
+    assert payload["display"] == "browser"
     assert payload["theme_color"] == "#1e88e5"
     assert payload["background_color"] == "#0d1b2a"
     icon_sizes = {icon["sizes"] for icon in payload["icons"]}

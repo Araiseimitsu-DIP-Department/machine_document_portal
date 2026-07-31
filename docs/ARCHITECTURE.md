@@ -38,7 +38,7 @@ ScheduledOperationsService
 
 FastAPIは画面と操作APIを公開します。Jinja2、vanilla CSS、最小限のJavaScriptで構成します。
 
-ブラウザ向けの静的ファイルは `/static` で配信し、サイドバーの ARAI ロゴは `docs/DESIGN` を `/design-assets` としてマウントした画像を参照します。タブ用 favicon、ホーム画面用アイコン、Web App Manifest は `app/static/icons/` と `app/static/manifest.json` に置き、HTML の head は `app/templates/includes/pwa_head.html` で共通化します。号機一覧など共通画面のタブ、ブックマーク、Apple向けWebアプリ名、Manifestの通常名・短縮名は「稼働中工程内検査シート」に統一し、加工図の専用タブだけは「号機_品番_加工図面」とします。表示名、テーマ色、アイコンキャッシュ版数、CSS・JavaScript・Manifestの内容ハッシュは `app/pwa.py` で管理します。Service Workerは使用せず、インストール後も画面の自動再読込や手動更新は通常のブラウザ表示と同じ `app/static/js/app.js` の処理です。
+ブラウザ向けの静的ファイルは `/static` で配信し、サイドバーの ARAI ロゴは `docs/DESIGN` を `/design-assets` としてマウントした画像を参照します。タブ用 favicon、ホーム画面用アイコン、Web App Manifest は `app/static/icons/` と `app/static/manifest.json` に置き、HTML の head は `app/templates/includes/pwa_head.html` で共通化します。号機一覧など共通画面のタブ、ブックマーク、Apple向けWebアプリ名、Manifestの通常名・短縮名は「稼働中工程内検査シート」に統一し、加工図の専用タブだけは「号機_品番_加工図面」とします。Manifestは`display: browser`とし、ホーム画面からも通常ブラウザーで起動します。表示名、テーマ色、アイコンキャッシュ版数、CSS・JavaScript・Manifestの内容ハッシュは `app/pwa.py` で管理します。Service Workerは使用せず、画面の自動再読込や手動更新は通常のブラウザ表示と同じ `app/static/js/app.js` の処理です。
 
 `app/main.py` はアプリの生成と起動・終了処理だけを担当し、バックグラウンド処理の時刻判定と実行制御は `app/scheduling.py` に分離します。これにより、HTTPアプリの初期化と定時処理を個別に確認・テストできます。
 
@@ -118,12 +118,12 @@ SharePoint連携はクライアント資格情報フローでMicrosoft Graphの�
 | --- | --- | --- |
 | CSS / JavaScript | `app/static/css/`、`app/static/js/` | レスポンシブレイアウト、モバイルメニュー、図面操作、クライアント側の更新検知 |
 | アプリアイコン一式 | `app/static/icons/` | favicon、Apple Touch Icon、manifest 用 192px / 512px。マスター画像は `machine_document_portal.png` |
-| Web App Manifest | `app/static/manifest.json` | 表示名・短縮名「稼働中工程内検査シート」、`display: standalone`、テーマ色 |
+| Web App Manifest | `app/static/manifest.json` | 表示名・短縮名「稼働中工程内検査シート」、`display: browser`、テーマ色 |
 | サイドバーロゴ | `docs/DESIGN/arai_logo.png`（`/design-assets/`） | 画面内ブランド表示。PWAアイコンとは別 |
 
 アイコン画像を差し替えた場合は、必要なサイズを再生成し、`app/pwa.py` の `STATIC_ICONS_VERSION` を更新してfaviconのブラウザキャッシュを無効化します。CSS、JavaScript、Manifestは各ファイルの内容から`STATIC_ASSETS_VERSION`を自動生成するため、変更時の手動更新は不要です。`manifest.json` 内の`name`／`short_name`／`theme_color`／`background_color`と`app/pwa.py`の定数は整合させます。
 
-Service Worker は導入していないため、オフライン動作やクライアント側の HTML キャッシュ制御は行いません。Chrome / Edge の「アプリとしてインストール」は HTTPS 環境で利用しやすくなりますが、データ同期と画面再読込は従来どおりサーバー API と `app.js` のポーリングに依存します。
+Service Worker は導入していないため、オフライン動作やクライアント側の HTML キャッシュ制御は行いません。`display: browser`では端末やブラウザーにより、インストール型アプリではなくホーム画面のブラウザーショートカットとして扱われます。データ同期と画面再読込は従来どおりサーバー API と `app.js` のポーリングに依存します。iPadで編集可能な工程内検査シートと加工図を並べる場合は、SharePointをiframeへ埋め込まず、iPadOS標準のSplit View／ステージマネージャを使用します。
 
 ## 定時通知と印刷
 
