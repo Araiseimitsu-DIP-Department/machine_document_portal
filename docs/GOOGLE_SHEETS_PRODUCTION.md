@@ -30,7 +30,7 @@ Set `NAS_DRAWING_DIRECTORY` to the directory containing drawing PDFs. The applic
 
 PDF.js is the primary display and the application does not show a JPEG first. The existing JPEG preview is requested only if PDF loading or rendering fails; fallback previews remain cached in the application process. The separate-tab first-page view is the current display mode. Split-screen display with the inspection sheet and multi-page navigation can be introduced later without changing the NAS lookup rule.
 
-The PDF.js module, worker, CMaps, standard fonts, and WASM decoders are served locally without a CDN. Current Chrome/Edge use the modern build; Safari and Apple mobile devices use the matching legacy build. Before production rollout, verify representative large drawings on the actual Windows PC, iPhone, iPad, and Android tablet over the production Wi-Fi. Safari 16.4 or later and a current Android Chrome are recommended.
+The PDF.js module, worker, CMaps, standard fonts, and WASM decoders are served locally without a CDN. Current Chrome/Edge use the modern build; Safari and Apple mobile devices use the matching legacy build. Before production rollout, verify representative large drawings on the actual Windows PC, iPhone, iPad, and Android tablet over the production Wi-Fi. Safari 16.4 or later and a current Android Chrome are recommended. A future split view must keep the inspection sheet editable and savable; validate that the SharePoint editing experience can be embedded on the production tenant and actual iPads before implementation.
 
 The account that starts the application must have read permission for the NAS directory.
 

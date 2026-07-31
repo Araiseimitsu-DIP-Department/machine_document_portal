@@ -45,6 +45,9 @@ class Settings(BaseSettings):
 
     sharepoint_drive_id: str | None = None
     sharepoint_folder_id: str | None = None
+    sharepoint_numeric_inspection_drive_id: str | None = None
+    sharepoint_numeric_inspection_folder_id: str | None = None
+    sharepoint_numeric_inspection_url: str | None = None
     sharepoint_process_inspection_url: str | None = None
     sharepoint_shipping_inspection_url: str | None = None
     notion_measurement_equipment_inspection_url: str | None = None

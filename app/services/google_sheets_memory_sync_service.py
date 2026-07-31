@@ -9,7 +9,10 @@ from app.schemas.dashboard import DocumentCandidate, DocumentState, MachineCard
 from app.services.document_search import DocumentSearchResult
 from app.services.memory_store import MemoryDashboardStore
 from app.services.nas_drawing_service import NasDrawingAccessError, NasDrawingService
-from app.services.sharepoint_service import SharePointService
+from app.services.sharepoint_service import (
+    SharePointNumericInspectionService,
+    SharePointService,
+)
 from app.services.spreadsheet_service import (
     GoogleSheetsService,
     SpreadsheetError,
@@ -53,6 +56,7 @@ class GoogleSheetsMemorySyncService:
         gateway: SpreadsheetGateway | None = None,
         drawing_service: NasDrawingService | None = None,
         inspection_service: SharePointService | None = None,
+        numeric_inspection_service: SharePointNumericInspectionService | None = None,
     ) -> None:
         self.memory_store = memory_store
         self.gateway = gateway or GoogleSheetsService(settings)
@@ -60,6 +64,10 @@ class GoogleSheetsMemorySyncService:
             settings.nas_drawing_directory
         )
         self.inspection_service = inspection_service or SharePointService(settings)
+        self.numeric_inspection_service = (
+            numeric_inspection_service
+            or SharePointNumericInspectionService(settings)
+        )
 
     def sync(self) -> MemorySpreadsheetSyncResult:
         """Fully refresh Google Sheets, SharePoint, and NAS."""
@@ -114,6 +122,11 @@ class GoogleSheetsMemorySyncService:
             if part_numbers_to_refresh
             else {}
         )
+        numeric_inspection_results = (
+            self.numeric_inspection_service.search_many(part_numbers_to_refresh)
+            if part_numbers_to_refresh
+            else {}
+        )
         cards: list[MachineCard] = []
         drawing_statuses: dict[str, str] = {}
         for display_order, record in enumerate(records, start=1):
@@ -135,9 +148,15 @@ class GoogleSheetsMemorySyncService:
                     record.part_number,
                     inspection_results,
                 )
+                numeric_inspection = self._numeric_inspection_state(
+                    record.machine_id,
+                    record.part_number,
+                    numeric_inspection_results,
+                )
             else:
                 drawing = previous.drawing.model_copy(deep=True)
                 inspection = previous.inspection.model_copy(deep=True)
+                numeric_inspection = previous.numeric_inspection.model_copy(deep=True)
             cards.append(
                 MachineCard(
                     machine_id=record.machine_id,
@@ -151,6 +170,7 @@ class GoogleSheetsMemorySyncService:
                     production_status=record.production_status,
                     inspection=inspection,
                     drawing=drawing,
+                    numeric_inspection=numeric_inspection,
                     updated_at=synced_at,
                 )
             )
@@ -174,6 +194,34 @@ class GoogleSheetsMemorySyncService:
         part_number: str | None,
         inspection_results: dict[str, DocumentSearchResult],
     ) -> DocumentState:
+        return GoogleSheetsMemorySyncService._sharepoint_document_state(
+            machine_id,
+            part_number,
+            inspection_results,
+            selection_path="inspections",
+        )
+
+    @staticmethod
+    def _numeric_inspection_state(
+        machine_id: str,
+        part_number: str | None,
+        inspection_results: dict[str, DocumentSearchResult],
+    ) -> DocumentState:
+        return GoogleSheetsMemorySyncService._sharepoint_document_state(
+            machine_id,
+            part_number,
+            inspection_results,
+            selection_path="numeric-inspections",
+        )
+
+    @staticmethod
+    def _sharepoint_document_state(
+        machine_id: str,
+        part_number: str | None,
+        inspection_results: dict[str, DocumentSearchResult],
+        *,
+        selection_path: str,
+    ) -> DocumentState:
         if not part_number:
             return DocumentState()
         inspection_result = inspection_results.get(part_number)
@@ -190,7 +238,7 @@ class GoogleSheetsMemorySyncService:
         if inspection_result.status == "multiple" and candidates:
             return DocumentState(
                 status="found",
-                url=f"/inspections/{quote(machine_id, safe='')}",
+                url=f"/{selection_path}/{quote(machine_id, safe='')}",
                 candidates=candidates,
             )
         return DocumentState(

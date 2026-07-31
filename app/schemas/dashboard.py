@@ -65,6 +65,7 @@ class MachineCard(BaseModel):
     production_status: str | None = None
     inspection: DocumentState = Field(default_factory=DocumentState)
     drawing: DocumentState = Field(default_factory=DocumentState)
+    numeric_inspection: DocumentState = Field(default_factory=DocumentState)
     updated_at: datetime | None = None
     stale: bool = False
 

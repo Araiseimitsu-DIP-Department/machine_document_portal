@@ -1,7 +1,12 @@
+from urllib.parse import unquote
+
 import httpx
 
 from app.config import Settings
-from app.services.sharepoint_service import SharePointService
+from app.services.sharepoint_service import (
+    SharePointNumericInspectionService,
+    SharePointService,
+)
 
 
 def configured_settings() -> Settings:
@@ -11,6 +16,10 @@ def configured_settings() -> Settings:
         microsoft_client_secret="client-secret",
         sharepoint_drive_id="drive-id",
         sharepoint_folder_id="folder-id",
+        sharepoint_numeric_inspection_drive_id=None,
+        sharepoint_numeric_inspection_folder_id=None,
+        sharepoint_numeric_inspection_url=None,
+        sharepoint_shipping_inspection_url=None,
     )
 
 
@@ -199,3 +208,141 @@ def test_sharepoint_prefers_active_exact_part_numbers_over_related_suffixes() ->
         "AB-100-1-2.xlsx",
         "AB-100-1-10.xlsx",
     ]
+
+
+def test_numeric_inspection_matches_only_configured_part_number_boundaries() -> None:
+    filenames = [
+        "AB-12.xlsx",
+        "AB-12_検査.xlsx",
+        "AB-12-測定.pdf",
+        "AB-12 測定値.xlsx",
+        "AB-12　全角.xlsx",
+        "AB-12・寸法.xlsx",
+        "AB-123.xlsx",
+        "AB-12ABC.xlsx",
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "login.microsoftonline.com":
+            return httpx.Response(200, json={"access_token": "token"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": f"file-{index}",
+                        "name": filename,
+                        "webUrl": f"https://example.com/{index}",
+                        "file": {},
+                    }
+                    for index, filename in enumerate(filenames)
+                ]
+            },
+        )
+
+    settings = configured_settings()
+    settings.sharepoint_numeric_inspection_folder_id = "numeric-folder-id"
+    service = SharePointNumericInspectionService(
+        settings,
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = service.search_many(("AB-12",))
+
+    assert result["AB-12"].status == "multiple"
+    matched_names = [
+        candidate.name for candidate in result["AB-12"].candidates
+    ]
+    assert matched_names[0] == "AB-12.xlsx"
+    assert matched_names[1:] == sorted(filenames[1:6])
+    assert "AB-123.xlsx" not in matched_names
+    assert "AB-12ABC.xlsx" not in matched_names
+
+
+def test_numeric_inspection_prefers_the_longest_active_part_number() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "login.microsoftonline.com":
+            return httpx.Response(200, json={"access_token": "token"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": "file-1",
+                        "name": "AB-12_検査.xlsx",
+                        "webUrl": "https://example.com/file-1",
+                        "file": {},
+                    }
+                ]
+            },
+        )
+
+    settings = configured_settings()
+    settings.sharepoint_numeric_inspection_folder_id = "numeric-folder-id"
+    service = SharePointNumericInspectionService(
+        settings,
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = service.search_many(("AB", "AB-12"))
+
+    assert result["AB"].status == "not_found"
+    assert result["AB-12"].status == "found"
+
+
+def test_numeric_inspection_resolves_the_configured_shipping_folder_url() -> None:
+    requested_paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "login.microsoftonline.com":
+            return httpx.Response(200, json={"access_token": "token"})
+        requested_paths.append(unquote(request.url.path))
+        if request.url.path.endswith("/drives/drive-id/root"):
+            return httpx.Response(
+                200,
+                json={
+                    "id": "drive-root",
+                    "webUrl": (
+                        "https://example.sharepoint.com/sites/hinshou/"
+                        "Shared%20Documents"
+                    ),
+                },
+            )
+        if "/root:/" in request.url.path:
+            return httpx.Response(
+                200,
+                json={"id": "shipping-folder", "folder": {}},
+            )
+        if request.url.path.endswith("/items/shipping-folder/children"):
+            return httpx.Response(
+                200,
+                json={
+                    "value": [
+                        {
+                            "id": "file-1",
+                            "name": "AB-12_検査.xlsx",
+                            "webUrl": "https://example.com/file-1",
+                            "file": {},
+                        }
+                    ]
+                },
+            )
+        return httpx.Response(404, json={"error": {"code": "itemNotFound"}})
+
+    settings = configured_settings()
+    settings.sharepoint_numeric_inspection_folder_id = None
+    settings.sharepoint_shipping_inspection_url = (
+        "https://example.sharepoint.com/sites/hinshou/Shared%20Documents/"
+        "Forms/AllItems.aspx?id=%2Fsites%2Fhinshou%2FShared%20Documents"
+        "%2F%E5%87%BA%E8%8D%B7%E6%A4%9C%E6%9F%BB%E8%A1%A8"
+    )
+    service = SharePointNumericInspectionService(
+        settings,
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = service.search("AB-12")
+
+    assert result.status == "found"
+    assert result.url == "https://example.com/file-1"
+    assert any(path.endswith("/root:/出荷検査表") for path in requested_paths)

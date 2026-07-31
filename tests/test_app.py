@@ -46,13 +46,15 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert 'data-mobile-nav-toggle' in response.text
     assert 'data-mobile-nav-backdrop' in response.text
     assert 'class="refresh-controls"' in response.text
-    assert "工程内検査シート・加工図面を更新するときに押してください。" in response.text
+    assert "工程内検査シート・加工図面・数値検査用を更新するときに押してください。" in response.text
     assert 'class="badge badge-running">稼働中</span>' in response.text
     assert 'class="badge badge-stopped">停止中</span>' in response.text
     assert 'class="badge badge-finished">生産終了</span>' in response.text
     assert 'class="badge badge-setup">セット中</span>' in response.text
     assert "machine-updated-at" not in response.text
     assert 'aria-label="A-1_AX-1200-01_加工図面"' in response.text
+    assert 'class="machine-doc-icon-drawing"' in response.text
+    assert 'class="machine-doc-icon-numeric"' in response.text
     assert 'target="_blank"' in response.text
     assert 'aria-label="全号機一覧"' in response.text
     assert ">測定機器点検表</span>" in response.text
@@ -60,8 +62,17 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert ">外部リンク</p>" in response.text
     assert response.text.count('class="nav-item nav-item-external"') == 3
     assert response.text.count('class="external-link-mark"') == 3
-    assert response.text.count(">検査シート</span>") == 6
-    assert response.text.count(">加工図面</span>") == 6
+    assert response.text.count('class="document-column-label" aria-label="検査シート"') == 6
+    assert response.text.count('class="document-column-label" aria-label="加工図面"') == 6
+    assert response.text.count('class="document-column-label" aria-label="数値検査用"') == 6
+    assert response.text.count('<span aria-hidden="true">検査</span>') == 6
+    assert response.text.count('<span aria-hidden="true">シート</span>') == 6
+    assert response.text.count('<span aria-hidden="true">加工</span>') == 6
+    assert response.text.count('<span aria-hidden="true">図面</span>') == 6
+    assert response.text.count('<span aria-hidden="true">数値</span>') == 6
+    assert response.text.count('<span aria-hidden="true">検査用</span>') == 6
+    assert '<h2 class="group-title"' not in response.text
+    assert "Aグループ・5台" in response.text
     assert "印刷の確認" not in response.text
 
 
@@ -156,6 +167,48 @@ def test_multiple_inspection_files_are_listed_on_a_separate_page() -> None:
     assert "Vendor A" in selection_response.text
     assert "Vendor B" in selection_response.text
     assert selection_response.text.count('target="_blank"') >= 2
+
+
+def test_multiple_numeric_inspection_files_are_listed_on_a_separate_page() -> None:
+    numeric_inspection = DocumentState(
+        status="found",
+        url="/numeric-inspections/E-4",
+        candidates=(
+            DocumentCandidate(
+                name="T798129_寸法.xlsx",
+                url="https://example.com/numeric-inspection-1",
+                location="第1工場",
+            ),
+            DocumentCandidate(
+                name="T798129・測定値.xlsx",
+                url="https://example.com/numeric-inspection-2",
+                location="第2工場",
+            ),
+        ),
+    )
+    with TestClient(app) as client:
+        get_memory_store().replace_dashboard(
+            [
+                MachineCard(
+                    machine_id="E-4",
+                    group_name="E",
+                    machine_number=4,
+                    part_number="T798129",
+                    numeric_inspection=numeric_inspection,
+                )
+            ]
+        )
+        dashboard_response = client.get("/")
+        selection_response = client.get("/numeric-inspections/E-4")
+
+    assert dashboard_response.status_code == 200
+    assert 'href="/numeric-inspections/E-4"' in dashboard_response.text
+    assert selection_response.status_code == 200
+    assert "<h1 class=\"page-title\">数値検査用</h1>" in selection_response.text
+    assert "T798129_寸法.xlsx" in selection_response.text
+    assert "T798129・測定値.xlsx" in selection_response.text
+    assert "第1工場" in selection_response.text
+    assert "第2工場" in selection_response.text
 
 
 def test_print_attention_appears_only_in_sidebar_and_opens_simple_page() -> None:
@@ -287,6 +340,7 @@ def test_manifest_json_contents() -> None:
     payload = response.json()
     assert payload["name"] == "稼働中工程内検査シート"
     assert payload["short_name"] == "稼働中工程内検査シート"
+    assert "数値検査用" in payload["description"]
     assert payload["display"] == "standalone"
     assert payload["theme_color"] == "#1e88e5"
     assert payload["background_color"] == "#0d1b2a"

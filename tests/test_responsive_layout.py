@@ -46,10 +46,11 @@ def test_styles_cover_dynamic_viewports_safe_areas_and_touch_targets() -> None:
     assert "touch-action: pan-x pan-y" in stylesheet
     assert "-webkit-overflow-scrolling: touch" in stylesheet
     assert "grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)" in stylesheet
-    assert "grid-template-columns: repeat(5, minmax(12.5rem, 1fr))" in stylesheet
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr))" in stylesheet
+    assert "grid-template-columns: minmax(0, 1fr) repeat(3, 2.75rem)" in stylesheet
     assert "@media (min-width: 1400px) and (max-width: 1699px)" in stylesheet
     assert "@media (max-width: 1399px)" in stylesheet
-    assert "grid-template-columns: repeat(3, minmax(14.5rem, 1fr))" in stylesheet
+    assert "grid-template-columns: repeat(3, minmax(17rem, 1fr))" in stylesheet
     assert ".drawing-viewer-body.is-pannable" in stylesheet
     assert ".drawing-viewer-body.is-panning" in stylesheet
     assert "font-size: clamp(1.3rem, 1.8vw, 1.65rem)" in stylesheet

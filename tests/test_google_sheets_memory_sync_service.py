@@ -35,6 +35,23 @@ class LiteralInspectionService:
         }
 
 
+class LiteralNumericInspectionService:
+    def __init__(self) -> None:
+        self.requested_part_numbers: tuple[str, ...] = ()
+
+    def search_many(
+        self, part_numbers: Iterable[str]
+    ) -> dict[str, DocumentSearchResult]:
+        self.requested_part_numbers = tuple(part_numbers)
+        return {
+            "ab-100": DocumentSearchResult(
+                status="found",
+                url="https://example.com/numeric-ab-100",
+            ),
+            "ab-200": DocumentSearchResult(status="not_found"),
+        }
+
+
 def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> None:
     (tmp_path / "ab-100.pdf").write_bytes(b"%PDF-1.4\n")
     settings = Settings(
@@ -45,12 +62,14 @@ def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> N
     )
     store = MemoryDashboardStore(settings)
     inspection_service = LiteralInspectionService()
+    numeric_inspection_service = LiteralNumericInspectionService()
 
     result = GoogleSheetsMemorySyncService(
         settings,
         store,
         gateway=FakeGateway(),
         inspection_service=inspection_service,
+        numeric_inspection_service=numeric_inspection_service,
     ).sync()
     dashboard = store.get_dashboard()
     a1 = next(machine for machine in dashboard.machines if machine.machine_id == "A-1")
@@ -67,11 +86,14 @@ def test_memory_sync_displays_only_machine_ids_in_the_spreadsheet(tmp_path) -> N
     assert a1.inspection.url == "https://example.com/ab-100"
     assert a1.drawing.status == "found"
     assert a1.drawing.url == "/drawings/A-1"
+    assert a1.numeric_inspection.status == "found"
+    assert a1.numeric_inspection.url == "https://example.com/numeric-ab-100"
     assert g2.part_number == "ab-200"
     assert g2.group_name == "G"
     assert g2.drawing.status == "not_found"
     assert dashboard.notice is None
     assert inspection_service.requested_part_numbers == ("ab-100", "ab-200")
+    assert numeric_inspection_service.requested_part_numbers == ("ab-100", "ab-200")
 
 
 class FailingGateway(SpreadsheetGateway):

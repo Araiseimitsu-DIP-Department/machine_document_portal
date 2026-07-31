@@ -19,6 +19,10 @@
     "drawing": {
       "status": "found",
       "url": "https://example.com/?document=drawing-{group}-{number}"
+    },
+    "numeric_inspection": {
+      "status": "found",
+      "url": "https://example.com/?document=numeric-inspection-{group}-{number}"
     }
   },
   "overrides": {
@@ -32,7 +36,8 @@
       "part_number": "BX_2040-R2",
       "product_name": "バルブボディ",
       "production_status": "停止中",
-      "inspection": {"status": "not_found", "url": null}
+      "inspection": {"status": "not_found", "url": null},
+      "numeric_inspection": {"status": "not_found", "url": null}
     },
     "A-3": {
       "part_number": "CX-3150-03",
@@ -60,12 +65,29 @@
     "B-2": {
       "part_number": "GX-7200",
       "product_name": "ピストンケース",
-      "drawing": {"status": "api_error", "url": null}
+      "drawing": {"status": "api_error", "url": null},
+      "numeric_inspection": {"status": "permission_error", "url": null}
     },
     "B-4": {
       "part_number": "EX-5090-02",
       "product_name": "スピンドルナット",
-      "drawing": {"status": "multiple", "url": null}
+      "drawing": {"status": "multiple", "url": null},
+      "numeric_inspection": {
+        "status": "found",
+        "url": "/numeric-inspections/B-4",
+        "candidates": [
+          {
+            "name": "EX-5090-02_寸法.xlsx",
+            "url": "https://example.com/?document=numeric-inspection-EX-5090-02-a",
+            "location": "第1工場"
+          },
+          {
+            "name": "EX-5090-02・測定値.xlsx",
+            "url": "https://example.com/?document=numeric-inspection-EX-5090-02-b",
+            "location": "第2工場"
+          }
+        ]
+      }
     },
     "B-3": {
       "part_number": "HX-8300-04",

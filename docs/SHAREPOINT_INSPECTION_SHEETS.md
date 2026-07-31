@@ -18,6 +18,9 @@ MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 SHAREPOINT_DRIVE_ID=
 SHAREPOINT_FOLDER_ID=
+SHAREPOINT_NUMERIC_INSPECTION_DRIVE_ID=
+SHAREPOINT_NUMERIC_INSPECTION_FOLDER_ID=
+SHAREPOINT_NUMERIC_INSPECTION_URL=
 SHAREPOINT_PROCESS_INSPECTION_URL=
 SHAREPOINT_SHIPPING_INSPECTION_URL=
 ```
@@ -29,6 +32,34 @@ SHAREPOINT_SHIPPING_INSPECTION_URL=
 SharePoint管理者に、対象のドキュメントライブラリの `driveId` と、検査シート保存フォルダの `folderId` を依頼します。対象フォルダのみに限定せず、対象サイトに対してアプリの `Read` 権限を付与してください。
 
 設定後、アプリはGoogle Sheetsの同期時にフォルダ一覧を一度だけ取得し、品番を照合します。ファイルの追加・更新・削除は次回の同期で反映されます。
+
+## 数値検査用
+
+号機一覧の「数値検査用」は、サイドバーの `SHAREPOINT_SHIPPING_INSPECTION_URL`
+と同じSharePointフォルダを検索対象とします。Microsoft Graphで読み取るため、
+別のドキュメントライブラリにある場合はその `driveId` を指定します。
+
+```dotenv
+SHAREPOINT_NUMERIC_INSPECTION_DRIVE_ID=
+SHAREPOINT_NUMERIC_INSPECTION_FOLDER_ID=
+```
+
+工程内検査シートと同じドキュメントライブラリにある場合、
+`SHAREPOINT_NUMERIC_INSPECTION_DRIVE_ID` は空欄にでき、
+`SHAREPOINT_DRIVE_ID` を共用します。`SHAREPOINT_NUMERIC_INSPECTION_FOLDER_ID`
+も省略でき、その場合は `SHAREPOINT_NUMERIC_INSPECTION_URL` の `id` パラメーターと
+ドライブのルートURLから対象フォルダを読み取り専用で解決します。
+`SHAREPOINT_NUMERIC_INSPECTION_URL` が空欄の場合は
+`SHAREPOINT_SHIPPING_INSPECTION_URL` を使用します。フォルダURLには共有URLではなく、
+SharePointでフォルダを開いた後の `AllItems.aspx?id=...` 形式を指定してください。
+
+数値検査用は拡張子を除いたファイル名を正規化せず照合します。品番との完全一致、
+または品番の直後が `_`、`-`、半角スペース、全角スペース、`・`のファイルを対象に
+します。例えば品番が `AB-12` の場合、`AB-12.xlsx`、`AB-12_検査.xlsx`、
+`AB-12・測定値.pdf` は対象ですが、`AB-123.xlsx` と `AB-12ABC.xlsx` は対象外です。
+稼働中の品番が重なる場合は、最も長く一致した品番へ関連付けます。
+
+候補が1件の場合は直接開き、複数の場合は専用の候補一覧へファイル名順で表示します。
 
 ## 確認
 

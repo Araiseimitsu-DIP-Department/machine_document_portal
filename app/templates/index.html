@@ -16,10 +16,25 @@
       aria-label="{% if document_name == '加工図' %}{{ machine.machine_id }}_{{ machine.part_number }}_加工図面{% else %}{{ machine.machine_id }}の{{ document_name }}を開く{% endif %}"
       title="{% if document_name == '加工図' %}{{ machine.machine_id }}_{{ machine.part_number }}_加工図面{% else %}{{ document_name }}：{{ state_text }}{% endif %}"
     >
+      {% if document_name == '加工図' %}
+      <svg class="machine-doc-icon-drawing" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M8 18h8l-8-8v8z"/>
+        <path d="M11 16h2l-2-2v2z"/>
+      </svg>
+      {% elif document_name == '数値検査用' %}
+      <svg class="machine-doc-icon-numeric" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <text x="7" y="17">123</text>
+      </svg>
+      {% else %}
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <path d="M14 2v6h6M8 13h8M8 17h5"/>
       </svg>
+      {% endif %}
       {% if document.candidates|length > 1 %}
       <span class="machine-doc-count" aria-hidden="true">{{ document.candidates|length }}</span>
       {% endif %}
@@ -69,7 +84,7 @@
             </time>
           </div>
         </div>
-        <p class="refresh-guidance">工程内検査シート・加工図面を更新するときに押してください。</p>
+        <p class="refresh-guidance">工程内検査シート・加工図面・数値検査用を更新するときに押してください。</p>
       </div>
     </div>
   </header>
@@ -90,13 +105,20 @@
       <summary class="group-column-header">
         <div class="group-title-wrap">
           <span class="group-letter" aria-hidden="true">{{ group_name }}</span>
-          <div>
-            <h2 class="group-title" id="group-{{ group_name }}">{{ group_name }}グループ</h2>
-            <p>{{ machines|length }}台</p>
-          </div>
+          <span class="sr-only">{{ group_name }}グループ・{{ machines|length }}台</span>
         </div>
-        <span class="document-column-label">検査シート</span>
-        <span class="document-column-label">加工図面</span>
+        <span class="document-column-label" aria-label="検査シート">
+          <span aria-hidden="true">検査</span>
+          <span aria-hidden="true">シート</span>
+        </span>
+        <span class="document-column-label" aria-label="加工図面">
+          <span aria-hidden="true">加工</span>
+          <span aria-hidden="true">図面</span>
+        </span>
+        <span class="document-column-label" aria-label="数値検査用">
+          <span aria-hidden="true">数値</span>
+          <span aria-hidden="true">検査用</span>
+        </span>
       </summary>
 
       <div class="machine-stack">
@@ -132,6 +154,7 @@
 
           {{ document_control(machine, machine.inspection, '工程内検査シート') }}
           {{ document_control(machine, machine.drawing, '加工図') }}
+          {{ document_control(machine, machine.numeric_inspection, '数値検査用') }}
         </article>
         {% endfor %}
       </div>

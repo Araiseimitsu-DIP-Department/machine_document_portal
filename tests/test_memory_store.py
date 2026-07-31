@@ -104,6 +104,9 @@ def test_failed_full_sync_disables_links_in_snapshot(tmp_path) -> None:
                 drawing=DocumentState(
                     status="found", url="https://example.com/drawing"
                 ),
+                numeric_inspection=DocumentState(
+                    status="found", url="https://example.com/numeric-inspection"
+                ),
             )
         ]
     )
@@ -113,6 +116,7 @@ def test_failed_full_sync_disables_links_in_snapshot(tmp_path) -> None:
 
     assert restored.machines[0].inspection.status == "api_error"
     assert restored.machines[0].drawing.status == "api_error"
+    assert restored.machines[0].numeric_inspection.status == "api_error"
     assert restored.machines[0].inspection.url is None
     assert restored.notice == "同期失敗"
 

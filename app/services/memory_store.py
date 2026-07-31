@@ -83,6 +83,7 @@ class MemoryDashboardStore:
                     continue
                 machine.inspection = DocumentState(status="api_error")
                 machine.drawing = DocumentState(status="api_error")
+                machine.numeric_inspection = DocumentState(status="api_error")
             self._dashboard.notice = notice
             self._dashboard.degraded = True
             self._save_snapshot(self._dashboard)

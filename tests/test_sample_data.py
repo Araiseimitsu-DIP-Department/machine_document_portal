@@ -18,7 +18,11 @@ def test_sample_data_contains_all_configured_machines() -> None:
 
 
 def test_sample_data_covers_required_states() -> None:
-    assert by_id("A-1").inspection.available and by_id("A-1").drawing.available
+    assert (
+        by_id("A-1").inspection.available
+        and by_id("A-1").drawing.available
+        and by_id("A-1").numeric_inspection.available
+    )
     assert by_id("A-2").inspection.status == "not_found"
     assert by_id("A-3").drawing.status == "not_found"
     assert by_id("A-4").inspection.status == by_id("A-4").drawing.status == "not_found"
@@ -26,4 +30,6 @@ def test_sample_data_covers_required_states() -> None:
     assert by_id("B-4").drawing.status == "multiple"
     assert by_id("B-1").inspection.status == "auth_error"
     assert by_id("B-2").drawing.status == "api_error"
+    assert by_id("B-2").numeric_inspection.status == "permission_error"
     assert by_id("B-3").stale is True
+    assert len(by_id("B-4").numeric_inspection.candidates) == 2

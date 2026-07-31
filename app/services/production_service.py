@@ -70,6 +70,7 @@ class ProductionService:
                             status=link.drawing_status if link else "not_checked",
                             url=link.drawing_url if link else None,
                         ),
+                        numeric_inspection=DocumentState(),
                         updated_at=production.fetched_at if production else None,
                     )
                 )

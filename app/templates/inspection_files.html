@@ -7,16 +7,16 @@
   <header class="inspection-files-header">
     <div>
       <p class="page-eyebrow">MACHINE DOCUMENT PORTAL</p>
-      <h1 class="page-title">工程内検査シート</h1>
+      <h1 class="page-title">{{ document_title }}</h1>
       <p class="inspection-files-summary">
-        {{ machine.machine_id }}・{{ machine.part_number }}に関連する{{ machine.inspection.candidates|length }}件のファイル
+        {{ machine.machine_id }}・{{ machine.part_number }}に関連する{{ document.candidates|length }}件のファイル
       </p>
     </div>
     <a class="btn inspection-back-button" href="/">号機一覧に戻る</a>
   </header>
 
-  <div class="inspection-file-list" aria-label="{{ machine.part_number }}の工程内検査シート一覧">
-    {% for candidate in machine.inspection.candidates %}
+  <div class="inspection-file-list" aria-label="{{ machine.part_number }}の{{ document_title }}一覧">
+    {% for candidate in document.candidates %}
     <article class="inspection-file-item">
       <div class="inspection-file-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>

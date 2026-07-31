@@ -191,3 +191,34 @@ def test_multiple_inspection_files_link_to_machine_selection_page(tmp_path) -> N
         "T798129-1.xlsx",
         "T798129-2.xlsx",
     ]
+
+
+def test_multiple_numeric_inspection_files_link_to_machine_selection_page(
+    tmp_path,
+) -> None:
+    settings = Settings(
+        persistence_mode="memory",
+        use_sample_data=False,
+        dashboard_snapshot_path=tmp_path / "dashboard.json",
+    )
+    store = MemoryDashboardStore(settings)
+    service = GoogleSheetsMemorySyncService(
+        settings,
+        store,
+        gateway=MutableGateway(
+            [ProductionRecord("E-4", "T798129", "Product", "running")]
+        ),
+        inspection_service=RecordingInspectionService(),
+        numeric_inspection_service=RelatedInspectionService(),
+        drawing_service=RecordingDrawingService(),
+    )
+
+    service.sync()
+
+    numeric_inspection = store.get_dashboard().machines[0].numeric_inspection
+    assert numeric_inspection.status == "found"
+    assert numeric_inspection.url == "/numeric-inspections/E-4"
+    assert [candidate.name for candidate in numeric_inspection.candidates] == [
+        "T798129-1.xlsx",
+        "T798129-2.xlsx",
+    ]

@@ -51,7 +51,15 @@ class SampleDataService:
                     **defaults.get("drawing", {}),
                     **override.get("drawing", {}),
                 }
-                for document in (inspection_data, drawing_data):
+                numeric_inspection_data = {
+                    **defaults.get("numeric_inspection", {}),
+                    **override.get("numeric_inspection", {}),
+                }
+                for document in (
+                    inspection_data,
+                    drawing_data,
+                    numeric_inspection_data,
+                ):
                     if isinstance(document.get("url"), str):
                         document["url"] = document["url"].format(**format_values)
                 machines.append(
@@ -69,6 +77,11 @@ class SampleDataService:
                         ),
                         inspection=DocumentState(**inspection_data) if part_number else DocumentState(),
                         drawing=DocumentState(**drawing_data) if part_number else DocumentState(),
+                        numeric_inspection=(
+                            DocumentState(**numeric_inspection_data)
+                            if part_number
+                            else DocumentState()
+                        ),
                         updated_at=datetime.fromisoformat(override["updated_at"])
                         if override.get("updated_at")
                         else updated_at,

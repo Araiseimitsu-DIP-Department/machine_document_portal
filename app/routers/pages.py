@@ -153,6 +153,42 @@ def inspection_files(
             "app_name": settings.app_name,
             "dashboard": dashboard_data,
             "machine": machine,
+            "document_title": "工程内検査シート",
+            "document": machine.inspection,
+            **_shared_page_context(settings, active_page="dashboard"),
+        },
+    )
+
+
+@router.get("/numeric-inspections/{machine_id}", response_class=HTMLResponse)
+def numeric_inspection_files(
+    machine_id: str,
+    request: Request,
+    settings: SettingsDependency,
+    session: DatabaseSessionDependency,
+) -> HTMLResponse:
+    """List every numeric-inspection file related to one machine."""
+
+    dashboard_data = ProductionService(settings, get_memory_store()).get_dashboard(session)
+    machine = next(
+        (item for item in dashboard_data.machines if item.machine_id == machine_id), None
+    )
+    if (
+        machine is None
+        or not machine.part_number
+        or not machine.numeric_inspection.available
+        or len(machine.numeric_inspection.candidates) < 2
+    ):
+        raise HTTPException(status_code=404, detail="Numeric inspection files not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="inspection_files.html",
+        context={
+            "app_name": settings.app_name,
+            "dashboard": dashboard_data,
+            "machine": machine,
+            "document_title": "数値検査用",
+            "document": machine.numeric_inspection,
             **_shared_page_context(settings, active_page="dashboard"),
         },
     )
