@@ -1,3 +1,4 @@
+import re
 from datetime import date
 
 import pytest
@@ -160,6 +161,7 @@ def test_multiple_inspection_files_are_listed_on_a_separate_page() -> None:
 
     assert dashboard_response.status_code == 200
     assert 'href="/inspections/E-4"' in dashboard_response.text
+    assert re.search(r'href="/inspections/E-4"[^>]*target="_blank"', dashboard_response.text) is None
     assert 'class="machine-doc-count"' in dashboard_response.text
     assert selection_response.status_code == 200
     assert "T798129-1.xlsx" in selection_response.text
@@ -203,6 +205,13 @@ def test_multiple_numeric_inspection_files_are_listed_on_a_separate_page() -> No
 
     assert dashboard_response.status_code == 200
     assert 'href="/numeric-inspections/E-4"' in dashboard_response.text
+    assert (
+        re.search(
+            r'href="/numeric-inspections/E-4"[^>]*target="_blank"',
+            dashboard_response.text,
+        )
+        is None
+    )
     assert selection_response.status_code == 200
     assert "<h1 class=\"page-title\">数値検査用</h1>" in selection_response.text
     assert "T798129_寸法.xlsx" in selection_response.text
