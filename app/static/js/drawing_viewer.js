@@ -100,6 +100,7 @@ async function initializeDrawingViewer(body) {
   let renderFitScale = 1;
   let baseCssWidth = 1;
   let baseCssHeight = 1;
+  let fallbackBaseCssWidth = 1;
   let drawingZoom = 100;
   let renderTask = null;
   let renderGeneration = 0;
@@ -166,6 +167,28 @@ async function initializeDrawingViewer(body) {
     };
   };
 
+  const standaloneContentSize = (available = contentSize()) => {
+    const style = window.getComputedStyle(body);
+    const horizontalPadding = Number.parseFloat(style.paddingLeft)
+      + Number.parseFloat(style.paddingRight);
+    const verticalPadding = Number.parseFloat(style.paddingTop)
+      + Number.parseFloat(style.paddingBottom);
+    const viewerChromeHeight = Math.max(0, window.innerHeight - body.clientHeight);
+    return {
+      width: Math.max(
+        available.width,
+        Number(window.screen?.availWidth || window.screen?.width || 0)
+          - horizontalPadding,
+      ),
+      height: Math.max(
+        available.height,
+        Number(window.screen?.availHeight || window.screen?.height || 0)
+          - viewerChromeHeight
+          - verticalPadding,
+      ),
+    };
+  };
+
   const calculateFitScale = () => {
     if (!pageViewport) return;
     const available = contentSize();
@@ -177,35 +200,35 @@ async function initializeDrawingViewer(body) {
     // Keep the PDF backing canvas at the resolution it would have in a
     // standalone window. Split View may reduce the CSS display size, but it
     // must never reduce the number of source pixels used to draw the page.
-    const style = window.getComputedStyle(body);
-    const horizontalPadding = Number.parseFloat(style.paddingLeft)
-      + Number.parseFloat(style.paddingRight);
-    const verticalPadding = Number.parseFloat(style.paddingTop)
-      + Number.parseFloat(style.paddingBottom);
-    const viewerChromeHeight = Math.max(0, window.innerHeight - body.clientHeight);
-    const standaloneWidth = Math.max(
-      available.width,
-      Number(window.screen?.availWidth || window.screen?.width || 0)
-        - horizontalPadding,
-    );
-    const standaloneHeight = Math.max(
-      available.height,
-      Number(window.screen?.availHeight || window.screen?.height || 0)
-        - viewerChromeHeight
-        - verticalPadding,
-    );
+    const standalone = standaloneContentSize(available);
     renderFitScale = Math.max(
       fitScale,
       Math.min(
-        standaloneWidth / pageViewport.width,
-        standaloneHeight / pageViewport.height,
+        standalone.width / pageViewport.width,
+        standalone.height / pageViewport.height,
       ),
     );
-    baseCssWidth = Math.max(1, pageViewport.width * fitScale);
-    baseCssHeight = Math.max(1, pageViewport.height * fitScale);
+    // 100% means the same physical drawing size as a standalone window.
+    // A Split View shows a clipped portion and uses scrolling instead of
+    // shrinking the whole drawing to the narrower pane.
+    baseCssWidth = Math.max(1, pageViewport.width * renderFitScale);
+    baseCssHeight = Math.max(1, pageViewport.height * renderFitScale);
     body.dataset.fitScale = String(Math.round(fitScale * 1000) / 1000);
     body.dataset.renderFitScale = String(
       Math.round(renderFitScale * 1000) / 1000,
+    );
+  };
+
+  const calculateFallbackBaseCssWidth = () => {
+    if (!fallbackImage.complete || fallbackImage.naturalWidth < 1) return;
+    const standalone = standaloneContentSize();
+    const fallbackFitScale = Math.min(
+      standalone.width / fallbackImage.naturalWidth,
+      standalone.height / Math.max(1, fallbackImage.naturalHeight),
+    );
+    fallbackBaseCssWidth = Math.max(
+      1,
+      fallbackImage.naturalWidth * fallbackFitScale,
     );
   };
 
@@ -224,7 +247,7 @@ async function initializeDrawingViewer(body) {
 
   const applyStageGeometry = (anchor = centerAnchor()) => {
     if (usingFallback) {
-      fallbackImage.style.width = `${drawingZoom}%`;
+      fallbackImage.style.width = `${fallbackBaseCssWidth * drawingZoom / 100}px`;
       updatePannableState();
       return;
     }
@@ -370,7 +393,7 @@ async function initializeDrawingViewer(body) {
     status.textContent = "高画質表示を利用できないため、画像表示へ切り替えました。";
     fallbackImage.hidden = false;
     fallbackImage.src = previewUrl;
-    fallbackImage.style.width = `${drawingZoom}%`;
+    fallbackImage.style.width = "100%";
     body.dataset.renderer = "jpeg-fallback";
     console.error("[drawing-viewer] PDF.js rendering failed; using JPEG fallback.", error);
     updateZoomControls();
@@ -506,6 +529,8 @@ async function initializeDrawingViewer(body) {
   body.addEventListener("pointercancel", stopDrawingPan);
 
   fallbackImage.addEventListener("load", () => {
+    calculateFallbackBaseCssWidth();
+    applyStageGeometry();
     updatePannableState();
   });
   fallbackImage.addEventListener("error", () => {
@@ -516,10 +541,16 @@ async function initializeDrawingViewer(body) {
   });
 
   const redrawForViewportSizeChange = () => {
-    if (!viewerReady || usingFallback || !pageViewport) {
+    if (!viewerReady) {
       updatePannableState();
       return;
     }
+    if (usingFallback) {
+      calculateFallbackBaseCssWidth();
+      applyStageGeometry();
+      return;
+    }
+    if (!pageViewport) return;
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       calculateFitScale();

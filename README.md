@@ -177,6 +177,7 @@ Microsoft Graph（マイクロソフト グラフ）のアプリケーション�
 - 拡大操作中はCSSで即時反映し、操作停止から250ms後に高精細なCanvasを再描画
 - iPadOSで新規ウィンドウをSplit Viewへ移した場合も、表示領域の変更を検知して端末の実ピクセル比で再描画
 - Split ViewでもPDFの内部描画解像度は単体表示時の基準を維持し、PDF.js失敗時の代替JPEGも4倍解像度・品質95で生成
+- Split Viewでも100%時の図面を単体表示時と同じ大きさで表示し、はみ出す範囲はスクロールして確認
 - PC、タブレット、スマートフォンごとにCanvasの辺長、総画素数、端末ピクセル比を制限し、使用済みCanvasを解放
 - Chrome／EdgeではModern版、SafariとAppleモバイル端末ではLegacy版のPDF.jsを同一バージョンで使用
 - PDF APIは `application/pdf`、インライン表示、Range、ETag、Last-Modified、`private, max-age=3600` に対応

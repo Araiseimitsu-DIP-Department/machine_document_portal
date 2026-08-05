@@ -107,6 +107,8 @@ def test_drawing_viewer_uses_local_pdfjs_and_keeps_existing_controls() -> None:
     assert "let renderFitScale = 1" in script
     assert "renderScale = renderFitScale * zoomRatio * outputScale" in script
     assert "body.dataset.renderFitScale" in script
+    assert "baseCssWidth = Math.max(1, pageViewport.width * renderFitScale)" in script
+    assert "fallbackBaseCssWidth * drawingZoom / 100" in script
     assert "pdfAbortController.abort()" in script
     assert '"wheel"' in script
     assert '"touchstart"' in script
