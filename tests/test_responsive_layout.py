@@ -101,6 +101,9 @@ def test_drawing_viewer_uses_local_pdfjs_and_keeps_existing_controls() -> None:
     assert 'const pdfjsBuildPath = browserProfile.useLegacyBuild ? "/legacy" : ""' in script
     assert "renderTask.cancel()" in script
     assert "releaseCanvas(previousCanvas)" in script
+    assert 'new ResizeObserver(redrawForViewportSizeChange)' in script
+    assert 'window.visualViewport?.addEventListener("resize", redrawForViewportSizeChange)' in script
+    assert 'renderPdf(1, "initialRenderMs")' in script
     assert "pdfAbortController.abort()" in script
     assert '"wheel"' in script
     assert '"touchstart"' in script

@@ -175,6 +175,7 @@ Microsoft Graph（マイクロソフト グラフ）のアプリケーション�
 - 表示領域からはみ出した画像を、マウスの左ドラッグで上下左右へ移動
 - 表示倍率を図面タブ内に一時保存し、画面の自動再読込後も直前の倍率を復元
 - 拡大操作中はCSSで即時反映し、操作停止から250ms後に高精細なCanvasを再描画
+- iPadOSで新規ウィンドウをSplit Viewへ移した場合も、表示領域の変更を検知して端末の実ピクセル比で再描画
 - PC、タブレット、スマートフォンごとにCanvasの辺長、総画素数、端末ピクセル比を制限し、使用済みCanvasを解放
 - Chrome／EdgeではModern版、SafariとAppleモバイル端末ではLegacy版のPDF.jsを同一バージョンで使用
 - PDF APIは `application/pdf`、インライン表示、Range、ETag、Last-Modified、`private, max-age=3600` に対応

@@ -110,6 +110,7 @@ async function initializeDrawingViewer(body) {
   let drawingPan = null;
   let viewerReady = false;
   let usingFallback = false;
+  let viewportResizeObserver = null;
 
   const recordTiming = (name, startedAt) => {
     const elapsed = Math.round((performance.now() - startedAt) * 10) / 10;
@@ -481,7 +482,7 @@ async function initializeDrawingViewer(body) {
     body.classList.remove("is-pannable");
   });
 
-  window.addEventListener("resize", () => {
+  const redrawForViewportSizeChange = () => {
     if (!viewerReady || usingFallback || !pageViewport) {
       updatePannableState();
       return;
@@ -493,13 +494,28 @@ async function initializeDrawingViewer(body) {
       cancelActiveRender();
       scheduleHighQualityRender();
     }, RESIZE_DELAY_MS);
-  });
+  };
+
+  // On iPadOS, putting a browser window into Split View can change the element
+  // size without a reliable window resize event. Observe the actual viewport so
+  // the PDF is always rerendered at the new window's device-pixel resolution.
+  if ("ResizeObserver" in window) {
+    viewportResizeObserver = new ResizeObserver(redrawForViewportSizeChange);
+    viewportResizeObserver.observe(body);
+  }
+  window.addEventListener("resize", redrawForViewportSizeChange);
+  window.visualViewport?.addEventListener("resize", redrawForViewportSizeChange);
 
   window.addEventListener("pagehide", () => {
     pdfAbortController.abort();
     cancelScheduledRender();
     cancelActiveRender();
     window.clearTimeout(resizeTimer);
+    viewportResizeObserver?.disconnect();
+    window.visualViewport?.removeEventListener(
+      "resize",
+      redrawForViewportSizeChange,
+    );
     if (pdfDocument) {
       pdfDocument.destroy();
     } else if (loadingTask) {
@@ -551,7 +567,10 @@ async function initializeDrawingViewer(body) {
     calculateFitScale();
     recordTiming("firstPageLoadMs", pageLoadStartedAt);
 
-    const initialRendered = await renderPdf(1, "initialRenderMs", 1);
+    // Render the first frame at the display's full pixel density as well.
+    // This avoids a low-resolution frame remaining visible in a new Split View
+    // window before the deferred high-quality redraw has a chance to run.
+    const initialRendered = await renderPdf(1, "initialRenderMs");
     if (!initialRendered) throw new Error("Initial PDF render was cancelled");
     viewerReady = true;
     body.setAttribute("aria-busy", "false");
