@@ -83,10 +83,13 @@ class NasDrawingPreviewService:
                     if document.page_count == 0:
                         raise NasDrawingPreviewError("Drawing PDF has no pages")
                     page = document.load_page(0)
+                    # This path is used only when PDF.js cannot render in the
+                    # browser. Keep enough source pixels for tablet Split View
+                    # and high zoom instead of falling back to a soft preview.
                     pixmap = page.get_pixmap(
-                        matrix=fitz.Matrix(1.5, 1.5), alpha=False
+                        matrix=fitz.Matrix(4.0, 4.0), alpha=False
                     )
-                    content = pixmap.tobytes("jpeg", jpg_quality=85)
+                    content = pixmap.tobytes("jpeg", jpg_quality=95)
             except NasDrawingPreviewError:
                 raise
             except Exception as exc:

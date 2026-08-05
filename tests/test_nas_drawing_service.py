@@ -110,3 +110,50 @@ def test_preview_service_caches_the_rendered_first_page(tmp_path: Path) -> None:
 
     assert first.startswith(b"\xff\xd8")
     assert second is first
+
+
+def test_preview_service_uses_high_resolution_fallback(
+    tmp_path: Path, monkeypatch
+) -> None:
+    drawing = tmp_path / "AB-100.pdf"
+    drawing.write_bytes(b"%PDF-test")
+    render_options: dict[str, object] = {}
+
+    class FakePixmap:
+        def tobytes(self, image_format: str, *, jpg_quality: int) -> bytes:
+            render_options["image_format"] = image_format
+            render_options["jpg_quality"] = jpg_quality
+            return b"\xff\xd8preview"
+
+    class FakePage:
+        def get_pixmap(self, *, matrix, alpha: bool) -> FakePixmap:
+            render_options["matrix"] = (matrix.a, matrix.d)
+            render_options["alpha"] = alpha
+            return FakePixmap()
+
+    class FakeDocument:
+        page_count = 1
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def load_page(self, page_number: int) -> FakePage:
+            assert page_number == 0
+            return FakePage()
+
+    import fitz
+
+    monkeypatch.setattr(fitz, "open", lambda _path: FakeDocument())
+
+    content = NasDrawingPreviewService().render_first_page(drawing)
+
+    assert content.startswith(b"\xff\xd8")
+    assert render_options == {
+        "matrix": (4.0, 4.0),
+        "alpha": False,
+        "image_format": "jpeg",
+        "jpg_quality": 95,
+    }

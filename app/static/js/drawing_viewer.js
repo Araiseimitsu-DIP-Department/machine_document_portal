@@ -97,6 +97,7 @@ async function initializeDrawingViewer(body) {
   let pdfPage = null;
   let pageViewport = null;
   let fitScale = 1;
+  let renderFitScale = 1;
   let baseCssWidth = 1;
   let baseCssHeight = 1;
   let drawingZoom = 100;
@@ -172,8 +173,40 @@ async function initializeDrawingViewer(body) {
       available.width / pageViewport.width,
       available.height / pageViewport.height,
     );
+
+    // Keep the PDF backing canvas at the resolution it would have in a
+    // standalone window. Split View may reduce the CSS display size, but it
+    // must never reduce the number of source pixels used to draw the page.
+    const style = window.getComputedStyle(body);
+    const horizontalPadding = Number.parseFloat(style.paddingLeft)
+      + Number.parseFloat(style.paddingRight);
+    const verticalPadding = Number.parseFloat(style.paddingTop)
+      + Number.parseFloat(style.paddingBottom);
+    const viewerChromeHeight = Math.max(0, window.innerHeight - body.clientHeight);
+    const standaloneWidth = Math.max(
+      available.width,
+      Number(window.screen?.availWidth || window.screen?.width || 0)
+        - horizontalPadding,
+    );
+    const standaloneHeight = Math.max(
+      available.height,
+      Number(window.screen?.availHeight || window.screen?.height || 0)
+        - viewerChromeHeight
+        - verticalPadding,
+    );
+    renderFitScale = Math.max(
+      fitScale,
+      Math.min(
+        standaloneWidth / pageViewport.width,
+        standaloneHeight / pageViewport.height,
+      ),
+    );
     baseCssWidth = Math.max(1, pageViewport.width * fitScale);
     baseCssHeight = Math.max(1, pageViewport.height * fitScale);
+    body.dataset.fitScale = String(Math.round(fitScale * 1000) / 1000);
+    body.dataset.renderFitScale = String(
+      Math.round(renderFitScale * 1000) / 1000,
+    );
   };
 
   const viewportAnchor = (clientX, clientY) => {
@@ -240,7 +273,7 @@ async function initializeDrawingViewer(body) {
       Math.max(1, window.devicePixelRatio || 1),
       outputScaleLimit,
     );
-    let renderScale = fitScale * zoomRatio * outputScale;
+    let renderScale = renderFitScale * zoomRatio * outputScale;
     let viewport = pdfPage.getViewport({ scale: renderScale });
     const sideFactor = browserProfile.maxCanvasSide
       / Math.max(viewport.width, viewport.height);
