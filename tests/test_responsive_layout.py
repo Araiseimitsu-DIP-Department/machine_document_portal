@@ -91,7 +91,10 @@ def test_drawing_viewer_uses_local_pdfjs_and_keeps_existing_controls() -> None:
     assert "maxCanvasSide: 3072" in script
     assert "maxCanvasPixels: 6_000_000" in script
     assert "maxCanvasSide: 4096" in script
-    assert "maxCanvasPixels: 10_000_000" in script
+    assert "const MAX_ZOOM = 800" in script
+    assert "maxDevicePixelRatio: 2" in script
+    assert "maxCanvasPixels: 16_000_000" in script
+    assert "maxImageCanvasBytes: 32_000_000" in script
     assert "maxCanvasSide: 5120" in script
     assert "maxCanvasPixels: 16_000_000" in script
     assert 'body.dataset.pdfjsBuild = browserProfile.useLegacyBuild' in script

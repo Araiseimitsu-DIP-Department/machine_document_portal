@@ -5,7 +5,9 @@ const RESIZE_DELAY_MS = 150;
 const BUTTON_ZOOM_STEP = 25;
 const WHEEL_ZOOM_STEP = 10;
 const MIN_ZOOM = 50;
-const MAX_ZOOM = 300;
+// Split View halves the available width, so 300% can be insufficient to inspect
+// drawing callouts. Keep rendering from the source PDF and allow up to 800%.
+const MAX_ZOOM = 800;
 
 const detectBrowserProfile = () => {
   const userAgent = window.navigator.userAgent;
@@ -35,10 +37,13 @@ const detectBrowserProfile = () => {
     return {
       name: "tablet",
       useLegacyBuild: appleMobile || safari,
-      maxDevicePixelRatio: 1.75,
+      // A split tablet viewport needs a higher-resolution source canvas when
+      // zoomed in. These limits keep one rendered page below roughly 64 MiB
+      // while avoiding the former 10 megapixel downsampling.
+      maxDevicePixelRatio: 2,
       maxCanvasSide: 4096,
-      maxCanvasPixels: 10_000_000,
-      maxImageCanvasBytes: 20_000_000,
+      maxCanvasPixels: 16_000_000,
+      maxImageCanvasBytes: 32_000_000,
     };
   }
   return {
