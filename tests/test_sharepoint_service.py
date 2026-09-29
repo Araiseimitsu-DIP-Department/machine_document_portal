@@ -1,8 +1,10 @@
 from urllib.parse import unquote
 
 import httpx
+import pytest
 
 from app.config import Settings
+from app.services import sharepoint_service as sharepoint_module
 from app.services.sharepoint_service import (
     SharePointNumericInspectionService,
     SharePointService,
@@ -57,6 +59,70 @@ def test_sharepoint_matches_literal_filename_stems_and_ignores_folders() -> None
     assert result["ab-100"].status == "not_found"
     assert result["ＡＢ－１００"].status == "not_found"
     assert result["AB 100"].status == "not_found"
+
+
+def test_sharepoint_keeps_separate_browser_and_excel_app_urls() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "login.microsoftonline.com":
+            return httpx.Response(200, json={"access_token": "token"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "name": "AB-100.xlsx",
+                        "webUrl": "https://tenant.sharepoint.com/sites/site/_layouts/15/Doc.aspx?id=1",
+                        "webDavUrl": "https://tenant.sharepoint.com/sites/site/Documents/AB-100.xlsx",
+                        "file": {},
+                    },
+                    {
+                        "name": "AB-100.pdf",
+                        "webUrl": "https://tenant.sharepoint.com/sites/site/Documents/AB-100.pdf",
+                        "webDavUrl": "https://tenant.sharepoint.com/sites/site/Documents/AB-100.pdf",
+                        "file": {},
+                    },
+                ]
+            },
+        )
+
+    service = SharePointService(
+        configured_settings(), transport=httpx.MockTransport(handler)
+    )
+    candidates = service.search("AB-100").candidates
+    candidate = next(file for file in candidates if file.name.endswith(".xlsx"))
+    assert candidate.url.endswith("Doc.aspx?id=1")
+    assert candidate.app_url == "https://tenant.sharepoint.com/sites/site/Documents/AB-100.xlsx"
+    assert next(file for file in candidates if file.name.endswith(".pdf")).app_url is None
+    assert [file.name for file in service.list_excel_files()] == ["AB-100.xlsx"]
+
+
+def test_folder_list_reuses_startup_catalog_until_manual_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = configured_settings().model_copy(
+        update={"sharepoint_drive_id": "validation-cache-drive"}
+    )
+    calls = 0
+
+    def list_files(_service: SharePointService) -> list[sharepoint_module._SharePointFile]:
+        nonlocal calls
+        calls += 1
+        return [
+            sharepoint_module._SharePointFile(
+                name="AB-100.xlsx",
+                url="https://tenant.sharepoint.com/Doc.aspx?id=1",
+                app_url="https://tenant.sharepoint.com/Documents/AB-100.xlsx",
+            )
+        ]
+
+    monkeypatch.setattr(SharePointService, "_list_files", list_files)
+    SharePointService(settings).search_many(("AB-100",))
+    assert [file.name for file in SharePointService(settings).list_excel_files()] == [
+        "AB-100.xlsx"
+    ]
+    assert calls == 1
+    SharePointService(settings).list_excel_files(refresh=True)
+    assert calls == 2
 
 
 def test_sharepoint_reports_permission_errors_for_all_requested_parts() -> None:

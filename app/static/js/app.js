@@ -15,6 +15,58 @@
   const groupColumns = Array.from(document.querySelectorAll("details.group-column"));
   const mobileViewport = window.matchMedia("(max-width: 680px)");
   const printSubmitForms = document.querySelectorAll("[data-print-submit-form]");
+  const isTablet = /iPad|Android/i.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isTablet) {
+    const modeKey = "machine-portal-excel-open-mode";
+    const modeBar = document.querySelector("[data-tablet-open-mode]");
+    const modeButtons = document.querySelectorAll("[data-excel-open-mode]");
+    const excelLinks = document.querySelectorAll("a[data-excel-app-url]");
+    const folderLinks = document.querySelectorAll("a[data-tablet-folder-path]");
+    const applyOpenMode = (mode) => {
+      const openInApp = mode !== "browser";
+      modeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", button.dataset.excelOpenMode === mode ? "true" : "false");
+      });
+      excelLinks.forEach((link) => {
+        if (!link.dataset.browserUrl) link.dataset.browserUrl = link.href;
+        link.href = link.dataset.browserUrl;
+        link.setAttribute("target", "_blank");
+        if (!openInApp) return;
+        try {
+          const parsed = new URL(link.dataset.excelAppUrl);
+          if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".sharepoint.com")) return;
+          link.href = `ms-excel:ofe|u|${parsed.href}`;
+          link.removeAttribute("target");
+        } catch { /* Keep the browser link when file metadata is invalid. */ }
+      });
+      folderLinks.forEach((link) => {
+        if (!link.dataset.browserUrl) {
+          link.dataset.browserUrl = link.href;
+          link.dataset.browserTitle = link.title;
+        }
+        link.href = openInApp ? link.dataset.tabletFolderPath : link.dataset.browserUrl;
+        if (openInApp) {
+          link.removeAttribute("target");
+          link.title = `${link.querySelector(".nav-label")?.textContent || "Excel"}のExcelファイル一覧を開く`;
+        } else {
+          link.setAttribute("target", "_blank");
+          link.title = link.dataset.browserTitle;
+        }
+      });
+    };
+    modeBar.hidden = false;
+    let savedMode = "app";
+    try { if (localStorage.getItem(modeKey) === "browser") savedMode = "browser"; } catch { /* Storage may be disabled. */ }
+    applyOpenMode(savedMode);
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const mode = button.dataset.excelOpenMode;
+        try { localStorage.setItem(modeKey, mode); } catch { /* The choice still applies to this page. */ }
+        applyOpenMode(mode);
+      });
+    });
+  }
   let mobileGroupOpenStates = null;
   let userOperationInProgress = false;
   let reloadPending = false;

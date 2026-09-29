@@ -8,6 +8,7 @@ class DocumentCandidateResult:
     name: str
     url: str
     location: str | None = None
+    app_url: str | None = None
 
 
 @dataclass(slots=True)

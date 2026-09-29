@@ -187,6 +187,31 @@ svg {
 .mobile-header,
 .mobile-nav-backdrop { display: none; }
 .main-content { flex: 1; }
+.validation-banner { margin: 1rem 2rem 0; padding: 0.6rem 0.8rem; border: 1px solid #d97706; border-radius: var(--radius-md); background: #fffbeb; color: #92400e; font-weight: 700; }
+.tablet-open-mode[hidden] { display: none; }
+.tablet-open-mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin: 1rem 2rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+}
+.tablet-open-mode-buttons { display: inline-flex; gap: 0.3rem; }
+.tablet-open-mode-buttons button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.tablet-open-mode-buttons button[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); color: var(--color-accent-hover); font-weight: 700; }
+.tablet-open-mode small { color: var(--color-text-secondary); }
 .page { width: min(100%, 112rem); margin: 0 auto; padding: 2rem; }
 
 .page-header {
@@ -544,6 +569,19 @@ a.machine-doc-button.status-found:hover { border-color: var(--color-accent); bac
 .inspection-file-details h2 { margin: 0; overflow-wrap: anywhere; font-size: 1rem; }
 .inspection-file-details p { margin: 0.3rem 0 0; color: var(--color-text-secondary); font-size: 0.78rem; overflow-wrap: anywhere; }
 .inspection-file-open { min-width: 5rem; }
+.external-file-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 1.5rem; color: var(--color-text-secondary); }
+.external-file-breadcrumbs a { color: var(--color-accent); }
+.external-folder-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.7rem; margin: 0 0 1.5rem; }
+.external-folder-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.9rem 1rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); text-decoration: none; font-weight: 600; }
+.external-folder-item span:last-child { margin-left: auto; font-size: 1.3rem; color: var(--color-accent); }
+.external-folder-icon { width: 1.3rem; height: 1.3rem; flex: 0 0 auto; color: var(--color-accent); }
+.external-folder-item:hover { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.external-file-search { margin-bottom: 0.5rem; }
+.external-file-search label { display: block; margin-bottom: 0.4rem; font-weight: 600; }
+.external-file-search-controls { display: flex; gap: 0.5rem; }
+.external-file-search-controls input { flex: 1; min-width: 0; padding: 0.65rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); font: inherit; }
+.external-file-refresh { margin: 0 0 1.5rem; text-align: right; }
+.external-file-pages { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
 
 .printing-page { max-width: 62rem; }
 .printing-header {

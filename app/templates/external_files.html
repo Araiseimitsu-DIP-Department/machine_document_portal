@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document_title }} | {{ pwa_name }}{% endblock %}
+
+{% block content %}
+<div class="page inspection-files-page">
+  <header class="inspection-files-header">
+    <div>
+      <p class="page-eyebrow">MACHINE DOCUMENT PORTAL</p>
+      <h1 class="page-title">{{ document_title }}</h1>
+      <p class="inspection-files-summary">SharePointフォルダ内のExcelファイル {{ all_file_count }}件</p>
+    </div>
+    <a class="btn inspection-back-button" href="/">号機一覧に戻る</a>
+  </header>
+
+  <nav class="external-file-breadcrumbs" aria-label="フォルダの階層">
+    {% for path, label in breadcrumbs %}
+    {% if not loop.last %}
+    <a href="?folder={{ path|urlencode }}">{{ label }}</a><span aria-hidden="true">/</span>
+    {% else %}
+    <span aria-current="page">{{ label }}</span>
+    {% endif %}
+    {% endfor %}
+  </nav>
+
+  <form class="external-file-search" action="/external-files/{{ category }}" method="get" role="search">
+    <label for="file-search">ファイル名・保存場所で検索</label>
+    <input name="folder" type="hidden" value="{{ folder }}">
+    <div class="external-file-search-controls">
+      <input id="file-search" name="search" type="search" value="{{ search }}" maxlength="100">
+      <button class="btn btn-primary" type="submit">検索</button>
+    </div>
+  </form>
+  <p class="external-file-refresh"><a href="?folder={{ folder|urlencode }}&amp;search={{ search|urlencode }}&amp;refresh=true">一覧を更新</a></p>
+
+  {% if child_folders and not search %}
+  <div class="external-folder-list" aria-label="客先・サブフォルダ一覧">
+    {% for name, path in child_folders %}
+    <a class="external-folder-item" href="?folder={{ path|urlencode }}">
+      <svg class="external-folder-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 7V5h7l2 2"/></svg>
+      <span>{{ name }}</span>
+      <span aria-hidden="true">›</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if files %}
+  <p class="inspection-files-summary">{% if search %}検索結果{% else %}このフォルダのExcel{% endif %} {{ total_files }}件</p>
+  <div class="inspection-file-list" aria-label="{{ document_title }}のExcelファイル一覧">
+    {% for file in files %}
+    <article class="inspection-file-item">
+      <div class="inspection-file-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+      </div>
+      <div class="inspection-file-details">
+        <h2>{{ file.name }}</h2>
+        <p>{{ file.location or '設定フォルダ直下' }}</p>
+      </div>
+      <a class="btn btn-primary inspection-file-open" href="{{ file.url }}" {% if file.app_url %}data-excel-app-url="{{ file.app_url }}"{% endif %} target="_blank" rel="noopener noreferrer" aria-label="{{ file.name }}を開く">開く</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% elif not child_folders or search %}
+  <p>{% if search %}該当するExcelファイルがありません。{% else %}このフォルダにExcelファイルはありません。{% endif %}</p>
+  {% endif %}
+
+  {% if total_pages > 1 %}
+  <nav class="external-file-pages" aria-label="ページ切り替え">
+    {% if page > 1 %}<a class="btn inspection-back-button" href="?folder={{ folder|urlencode }}&amp;search={{ search|urlencode }}&amp;page={{ page - 1 }}">前へ</a>{% endif %}
+    <span>{{ page }} / {{ total_pages }}ページ</span>
+    {% if page < total_pages %}<a class="btn inspection-back-button" href="?folder={{ folder|urlencode }}&amp;search={{ search|urlencode }}&amp;page={{ page + 1 }}">次へ</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

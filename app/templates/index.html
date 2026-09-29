@@ -11,6 +11,9 @@
     <a
       class="btn machine-doc-button status-found"
       href="{{ document.url }}"
+      {% if document_name != '加工図' and document.candidates|length == 1 and document.candidates[0].app_url %}
+      data-excel-app-url="{{ document.candidates[0].app_url }}"
+      {% endif %}
       {% if document.candidates|length <= 1 %}
       target="_blank"
       rel="noopener noreferrer"

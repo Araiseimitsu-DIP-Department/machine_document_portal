@@ -232,6 +232,7 @@ class GoogleSheetsMemorySyncService:
                 name=candidate.name,
                 url=candidate.url,
                 location=candidate.location,
+                app_url=candidate.app_url,
             )
             for candidate in inspection_result.candidates
         )

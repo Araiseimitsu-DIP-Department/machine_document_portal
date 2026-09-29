@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.main import app
 from app.schemas.dashboard import DocumentCandidate, DocumentState, MachineCard
+from app.services.document_search import DocumentCandidateResult
 from app.services.memory_store import get_memory_store
 from app.services.next_day_sheet_service import SheetTarget
 from app.services.scheduled_job_state_store import ScheduledJobStateStore
@@ -63,6 +64,11 @@ def test_dashboard_renders_in_sample_mode_without_postgresql() -> None:
     assert ">外部リンク</p>" in response.text
     assert response.text.count('class="nav-item nav-item-external"') == 3
     assert response.text.count('class="external-link-mark"') == 3
+    assert 'data-tablet-folder-path="/external-files/process"' in response.text
+    assert 'data-tablet-folder-path="/external-files/shipping"' in response.text
+    assert 'data-tablet-open-mode hidden' in response.text
+    assert 'data-excel-open-mode="app" aria-pressed="true"' in response.text
+    assert 'data-excel-open-mode="browser" aria-pressed="false"' in response.text
     assert response.text.count('class="document-column-label" aria-label="検査シート"') == 6
     assert response.text.count('class="document-column-label" aria-label="加工図面"') == 6
     assert response.text.count('class="document-column-label" aria-label="数値検査用"') == 6
@@ -218,6 +224,62 @@ def test_multiple_numeric_inspection_files_are_listed_on_a_separate_page() -> No
     assert "T798129・測定値.xlsx" in selection_response.text
     assert "第1工場" in selection_response.text
     assert "第2工場" in selection_response.text
+
+
+def test_single_inspection_file_exposes_app_url_without_changing_browser_href() -> None:
+    inspection = DocumentState(
+        status="found",
+        url="https://tenant.sharepoint.com/Doc.aspx?id=1",
+        candidates=(
+            DocumentCandidate(
+                name="AB-100.xlsx",
+                url="https://tenant.sharepoint.com/Doc.aspx?id=1",
+                app_url="https://tenant.sharepoint.com/Documents/AB-100.xlsx",
+            ),
+        ),
+    )
+    with TestClient(app) as client:
+        get_memory_store().replace_dashboard(
+            [MachineCard(machine_id="A-1", group_name="A", machine_number=1, part_number="AB-100", inspection=inspection)]
+        )
+        response = client.get("/")
+    assert 'href="https://tenant.sharepoint.com/Doc.aspx?id=1"' in response.text
+    assert 'data-excel-app-url="https://tenant.sharepoint.com/Documents/AB-100.xlsx"' in response.text
+
+
+def test_external_excel_file_list_searches_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.routers import pages
+
+    files = tuple(
+        DocumentCandidateResult(
+            name=f"AB-{index:03d}.xlsx",
+            url=f"https://tenant.sharepoint.com/Doc.aspx?id={index}",
+            location="客先A/工程A",
+            app_url=f"https://tenant.sharepoint.com/Documents/AB-{index:03d}.xlsx",
+        )
+        for index in range(55)
+    )
+    monkeypatch.setattr(pages, "_external_excel_files", lambda _settings, _category, **_kwargs: files)
+    with TestClient(app) as client:
+        root = client.get("/external-files/process")
+        customer = client.get("/external-files/process", params={"folder": "客先A"})
+        first = client.get("/external-files/process", params={"folder": "客先A/工程A"})
+        second = client.get("/external-files/process", params={"folder": "客先A/工程A", "page": 2})
+        searched = client.get("/external-files/process?search=AB-054")
+        unknown = client.get("/external-files/process", params={"folder": "客先B"})
+    assert first.status_code == second.status_code == searched.status_code == 200
+    assert root.status_code == customer.status_code == 200
+    assert unknown.status_code == 404
+    assert 'class="external-folder-item"' in root.text
+    assert "客先A" in root.text
+    assert root.text.count('class="inspection-file-item"') == 0
+    assert "工程A" in customer.text
+    assert customer.text.count('class="inspection-file-item"') == 0
+    assert first.text.count('class="inspection-file-item"') == 50
+    assert second.text.count('class="inspection-file-item"') == 5
+    assert 'data-excel-app-url="https://tenant.sharepoint.com/Documents/AB-054.xlsx"' in second.text
+    assert 'href="https://tenant.sharepoint.com/Doc.aspx?id=54"' in second.text
+    assert searched.text.count('class="inspection-file-item"') == 1
 
 
 def test_print_attention_appears_only_in_sidebar_and_opens_simple_page() -> None:

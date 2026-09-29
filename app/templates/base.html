@@ -44,14 +44,14 @@
         <div class="external-link-group">
           <p class="external-links-heading">外部リンク</p>
         {% if sharepoint_process_inspection_url %}
-        <a class="nav-item nav-item-external" href="{{ sharepoint_process_inspection_url }}" target="_blank" rel="noopener noreferrer" title="工程内検査シートを別タブで開く">
+        <a class="nav-item nav-item-external" href="{{ sharepoint_process_inspection_url }}" data-tablet-folder-path="/external-files/process" target="_blank" rel="noopener noreferrer" title="工程内検査シートを別タブで開く">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m14 16 2 2 4-4"/></svg>
           <span class="nav-label">工程内検査シート</span>
           <span class="external-link-mark" aria-hidden="true">↗</span>
         </a>
         {% endif %}
         {% if sharepoint_shipping_inspection_url %}
-        <a class="nav-item nav-item-external" href="{{ sharepoint_shipping_inspection_url }}" target="_blank" rel="noopener noreferrer" title="出荷検査表を別タブで開く">
+        <a class="nav-item nav-item-external" href="{{ sharepoint_shipping_inspection_url }}" data-tablet-folder-path="/external-files/shipping" target="_blank" rel="noopener noreferrer" title="出荷検査表を別タブで開く">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v11H3z"/><path d="M7 7V4h10v3M8 12h8M12 10v4"/></svg>
           <span class="nav-label">出荷検査表</span>
           <span class="external-link-mark" aria-hidden="true">↗</span>
@@ -87,6 +87,17 @@
         </button>
       </header>
       <main class="main-content" id="main-content">
+        {% if app_env == 'validation' %}
+        <div class="validation-banner" role="status">検証環境（ポート8090）— 通常のポータルとは別画面です</div>
+        {% endif %}
+        <div class="tablet-open-mode" data-tablet-open-mode hidden>
+          <span>Excelの開き方</span>
+          <div class="tablet-open-mode-buttons" role="group" aria-label="Excelの開き方">
+            <button type="button" data-excel-open-mode="app" aria-pressed="true">Excelアプリ</button>
+            <button type="button" data-excel-open-mode="browser" aria-pressed="false">ブラウザ</button>
+          </div>
+          <small>Excelアプリが使えない場合は「ブラウザ」を選択</small>
+        </div>
         {% block content %}{% endblock %}
       </main>
       <footer class="app-footer">© ARAISEIMITSU {{ current_year }} - Created By DIP Department</footer>

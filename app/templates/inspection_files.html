@@ -28,6 +28,7 @@
       <a
         class="btn btn-primary inspection-file-open"
         href="{{ candidate.url }}"
+        {% if candidate.app_url %}data-excel-app-url="{{ candidate.app_url }}"{% endif %}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="{{ candidate.name }}をSharePointで開く"

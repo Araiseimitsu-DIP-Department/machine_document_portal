@@ -4,6 +4,7 @@ from collections import defaultdict, deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import PurePath
+from threading import Lock
 from typing import Any, Literal
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
@@ -37,6 +38,7 @@ class _SharePointFile:
     name: str
     url: str
     location: str | None = None
+    app_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +46,10 @@ class _SharePointLocation:
     drive_id: str | None
     folder_id: str | None
     folder_url: str | None = None
+
+
+_file_catalog_cache: dict[tuple[str, str, str, str, str], tuple[_SharePointFile, ...]] = {}
+_file_catalog_cache_lock = Lock()
 
 
 class SharePointService:
@@ -88,6 +94,30 @@ class SharePointService:
             DocumentSearchResult(status="not_checked"),
         )
 
+    def list_excel_files(self, *, refresh: bool = False) -> tuple[DocumentCandidateResult, ...]:
+        """List Excel workbooks under the configured folder for tablet selection."""
+
+        if not self.configured:
+            return ()
+        cached_files = None if refresh else self._cached_files()
+        if cached_files is None:
+            cached_files = tuple(self._list_files())
+            self._remember_files(cached_files)
+        files = (
+            file
+            for file in cached_files
+            if file.name.lower().endswith((".xlsx", ".xlsm", ".xlsb", ".xls"))
+        )
+        return tuple(
+            DocumentCandidateResult(
+                name=file.name,
+                url=file.url,
+                location=file.location,
+                app_url=file.app_url,
+            )
+            for file in sorted(files, key=lambda file: ((file.location or "").casefold(), file.name.casefold()))
+        )
+
     def search_many(
         self, part_numbers: Iterable[str]
     ) -> dict[str, DocumentSearchResult]:
@@ -116,6 +146,7 @@ class SharePointService:
         except SharePointError:
             status = "api_error"
         else:
+            self._remember_files(tuple(files))
             matches: dict[str, list[_SharePointFile]] = defaultdict(list)
             for file in files:
                 filename_stem = PurePath(file.name).stem
@@ -137,6 +168,27 @@ class SharePointService:
             part_number: DocumentSearchResult(status=status)
             for part_number in part_numbers
         }
+
+    def _cache_key(self) -> tuple[str, str, str, str, str]:
+        return (
+            self.settings.microsoft_tenant_id or "",
+            self.settings.microsoft_client_id or "",
+            self.location.drive_id or "",
+            self.location.folder_id or "",
+            self.location.folder_url or "",
+        )
+
+    def _cached_files(self) -> tuple[_SharePointFile, ...] | None:
+        if self.transport is not None:
+            return None
+        with _file_catalog_cache_lock:
+            return _file_catalog_cache.get(self._cache_key())
+
+    def _remember_files(self, files: tuple[_SharePointFile, ...]) -> None:
+        if self.transport is not None:
+            return
+        with _file_catalog_cache_lock:
+            _file_catalog_cache[self._cache_key()] = files
 
     def _matched_part_number(
         self,
@@ -180,6 +232,7 @@ class SharePointService:
                 name=file.name,
                 url=file.url,
                 location=file.location,
+                app_url=file.app_url,
             )
             for file in matches
         )
@@ -232,7 +285,7 @@ class SharePointService:
                     f"{encoded_folder_id}/children"
                 )
                 params: dict[str, str] | None = {
-                    "$select": "id,name,webUrl,file,folder",
+                    "$select": "id,name,webUrl,webDavUrl,file,folder",
                     "$top": "999",
                 }
 
@@ -265,11 +318,21 @@ class SharePointService:
                         name = item.get("name")
                         web_url = item.get("webUrl")
                         if isinstance(name, str) and isinstance(web_url, str):
+                            webdav_url = item.get("webDavUrl")
+                            app_url = None
+                            if (
+                                name.lower().endswith((".xlsx", ".xlsm", ".xlsb", ".xls"))
+                                and isinstance(webdav_url, str)
+                                and urlsplit(webdav_url).scheme == "https"
+                                and urlsplit(webdav_url).netloc == urlsplit(web_url).netloc
+                            ):
+                                app_url = webdav_url
                             files.append(
                                 _SharePointFile(
                                     name=name,
                                     url=web_url,
                                     location=folder_location or None,
+                                    app_url=app_url,
                                 )
                             )
                     candidate = payload.get("@odata.nextLink")

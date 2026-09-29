@@ -19,6 +19,7 @@ class DocumentCandidate(BaseModel):
     name: str = Field(min_length=1)
     url: str
     location: str | None = None
+    app_url: str | None = None
 
     @field_validator("url")
     @classmethod
@@ -26,6 +27,16 @@ class DocumentCandidate(BaseModel):
         parsed_url = urlsplit(value)
         if parsed_url.scheme.lower() not in {"http", "https"} or not parsed_url.netloc:
             raise ValueError("Document candidate URL must use HTTP or HTTPS")
+        return value
+
+    @field_validator("app_url")
+    @classmethod
+    def validate_app_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed_url = urlsplit(value)
+        if parsed_url.scheme.lower() != "https" or not parsed_url.netloc:
+            raise ValueError("Excel app URL must use HTTPS")
         return value
 
 

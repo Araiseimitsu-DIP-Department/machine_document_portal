@@ -1,13 +1,15 @@
 import logging
+import time
 from collections import OrderedDict
 from datetime import datetime
+from threading import Lock
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import PROJECT_ROOT
+from app.config import PROJECT_ROOT, Settings
 from app.dependencies import DatabaseSessionDependency, SettingsDependency
 from app.pwa import (
     PWA_NAME,
@@ -16,6 +18,7 @@ from app.pwa import (
     STATIC_ICONS_VERSION,
 )
 from app.schemas.dashboard import MachineCard
+from app.services.document_search import DocumentCandidateResult
 from app.services.memory_store import get_memory_store
 from app.services.production_service import ProductionService
 from app.services.scheduled_job_state_store import (
@@ -23,6 +26,11 @@ from app.services.scheduled_job_state_store import (
     ScheduledJobStateStore,
 )
 from app.services.scheduled_operations_service import ScheduledOperationsService
+from app.services.sharepoint_service import (
+    SharePointError,
+    SharePointNumericInspectionService,
+    SharePointService,
+)
 from app.utils.time_zone import format_jst
 
 router = APIRouter(include_in_schema=False)
@@ -33,6 +41,37 @@ templates.env.globals["static_icons_version"] = STATIC_ICONS_VERSION
 templates.env.globals["static_assets_version"] = STATIC_ASSETS_VERSION
 templates.env.globals["pwa_theme_color"] = PWA_THEME_COLOR
 templates.env.globals["pwa_name"] = PWA_NAME
+_external_file_cache: dict[tuple[str, str, str, str], tuple[float, tuple[DocumentCandidateResult, ...]]] = {}
+_external_file_cache_lock = Lock()
+_EXTERNAL_FILE_PAGE_SIZE = 50
+
+
+def _external_excel_files(
+    settings: Settings, category: str, *, refresh: bool = False
+) -> tuple[DocumentCandidateResult, ...]:
+    if category == "process":
+        service = SharePointService(settings)
+    elif category == "shipping":
+        service = SharePointNumericInspectionService(settings)
+    else:
+        raise HTTPException(status_code=404, detail="Unknown document category")
+    key = (
+        category,
+        service.location.drive_id or "",
+        service.location.folder_id or "",
+        service.location.folder_url or "",
+    )
+    now = time.monotonic()
+    with _external_file_cache_lock:
+        if refresh:
+            _external_file_cache.pop(key, None)
+        cached = _external_file_cache.get(key)
+        if cached and cached[0] > now:
+            return cached[1]
+    files = service.list_excel_files(refresh=refresh)
+    with _external_file_cache_lock:
+        _external_file_cache[key] = (time.monotonic() + 300, files)
+    return files
 
 
 STATUS_LABELS = {
@@ -91,6 +130,7 @@ def _shared_page_context(settings, *, active_page: str) -> dict[str, object]:
     dashboard_updated_at = get_memory_store().get_last_updated_at()
     return {
         "active_page": active_page,
+        "app_env": settings.app_env,
         "print_attention": print_attention,
         "dashboard_revision": (
             dashboard_updated_at.isoformat() if dashboard_updated_at else ""
@@ -121,6 +161,83 @@ def dashboard(
             "overview_lanes": build_overview_lanes(machine_groups),
             "status_labels": STATUS_LABELS,
             "sample_mode": settings.use_sample_data,
+            **_shared_page_context(settings, active_page="dashboard"),
+        },
+    )
+
+
+@router.get("/external-files/{category}", response_class=HTMLResponse)
+def external_excel_files(
+    category: str,
+    request: Request,
+    settings: SettingsDependency,
+    search: str = Query(default="", max_length=100),
+    folder: str = Query(default="", max_length=1024),
+    page: int = Query(default=1, ge=1),
+    refresh: bool = False,
+) -> HTMLResponse:
+    """Show a searchable SharePoint workbook list for tablet users."""
+
+    if category not in {"process", "shipping"}:
+        raise HTTPException(status_code=404, detail="Unknown document category")
+    title = "工程内検査シート" if category == "process" else "出荷検査表"
+    try:
+        all_files = _external_excel_files(settings, category, refresh=refresh)
+    except SharePointError:
+        logger.exception("Could not list %s Excel files", category)
+        raise HTTPException(status_code=503, detail="SharePoint files are unavailable")
+    folder_paths: set[str] = set()
+    for file in all_files:
+        parts = (file.location or "").split("/")
+        folder_paths.update("/".join(parts[:index]) for index in range(1, len(parts) + 1) if parts[index - 1])
+    if folder and folder not in folder_paths:
+        raise HTTPException(status_code=404, detail="Unknown document folder")
+    prefix = f"{folder}/" if folder else ""
+    child_folders = sorted(
+        {
+            prefix + location[len(prefix) :].split("/", 1)[0]
+            for file in all_files
+            if (location := file.location or "")
+            and location.startswith(prefix)
+            and location != folder
+        },
+        key=str.casefold,
+    )
+    breadcrumbs = [("", title)]
+    if folder:
+        accumulated = ""
+        for segment in folder.split("/"):
+            accumulated = f"{accumulated}/{segment}" if accumulated else segment
+            breadcrumbs.append((accumulated, segment))
+    needle = search.strip().casefold()
+    files = tuple(
+        file
+        for file in all_files
+        if (not folder or (file.location or "") == folder or (file.location or "").startswith(prefix))
+        and (
+            (needle and (needle in file.name.casefold() or needle in (file.location or "").casefold()))
+            or (not needle and (file.location or "") == folder)
+        )
+    )
+    total_pages = max(1, (len(files) + _EXTERNAL_FILE_PAGE_SIZE - 1) // _EXTERNAL_FILE_PAGE_SIZE)
+    page = min(page, total_pages)
+    start = (page - 1) * _EXTERNAL_FILE_PAGE_SIZE
+    return templates.TemplateResponse(
+        request=request,
+        name="external_files.html",
+        context={
+            "app_name": settings.app_name,
+            "document_title": title,
+            "category": category,
+            "folder": folder,
+            "child_folders": tuple((path.rsplit("/", 1)[-1], path) for path in child_folders),
+            "breadcrumbs": breadcrumbs,
+            "files": files[start : start + _EXTERNAL_FILE_PAGE_SIZE],
+            "all_file_count": len(all_files),
+            "total_files": len(files),
+            "search": search,
+            "page": page,
+            "total_pages": total_pages,
             **_shared_page_context(settings, active_page="dashboard"),
         },
     )
