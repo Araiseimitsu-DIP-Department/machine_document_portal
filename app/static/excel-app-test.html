@@ -16,29 +16,42 @@
 </head>
 <body>
   <h1>Excelアプリ起動テスト</h1>
-  <p>タブレットでSharePointのExcelファイルのリンクを貼り付け、下のボタンを押してください。ファイルの内容はこのページから送信・変更しません。</p>
-  <label for="file-url">SharePointのExcelファイルへのリンク</label>
+  <p>リンクを貼り付け、下のボタンを押してください。ファイルの内容やリンクはこのページから送信・変更しません。</p>
+  <label for="file-url">Excelアプリ用：SharePointのファイル共有リンク</label>
   <input id="file-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…" aria-describedby="message">
   <p id="message" role="status"></p>
+  <label for="portal-url">ブラウザ用：ポータルの資料ボタンからコピーしたリンク</label>
+  <p>ポータルで対象の資料ボタンを長押ししてリンクをコピーします。候補が複数ある場合は、候補一覧の対象ファイルの「開く」を長押ししてください。</p>
+  <input id="portal-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…" aria-describedby="portal-message">
+  <p id="portal-message" role="status"></p>
   <a id="excel-link" href="#" hidden>Excelアプリで開く</a>
-  <a id="browser-link" href="#" hidden target="_blank" rel="noopener noreferrer">ブラウザで開く（再テスト）</a>
+  <a id="browser-link" href="#" hidden target="_blank" rel="noopener noreferrer">ブラウザの別タブで開く</a>
   <script>
     const input = document.getElementById('file-url');
     const message = document.getElementById('message');
+    const portalInput = document.getElementById('portal-url');
+    const portalMessage = document.getElementById('portal-message');
     const excelLink = document.getElementById('excel-link');
     const browserLink = document.getElementById('browser-link');
+    const parseSharePointUrl = (value) => {
+      try {
+        const url = new URL(value.trim());
+        return url.protocol === 'https:' && url.hostname.endsWith('.sharepoint.com') ? url : null;
+      } catch { return null; }
+    };
     input.addEventListener('input', () => {
-      let url;
-      try { url = new URL(input.value.trim()); } catch { url = null; }
-      const valid = url?.protocol === 'https:' && url.hostname.endsWith('.sharepoint.com');
-      excelLink.hidden = browserLink.hidden = !valid;
-      message.textContent = input.value && !valid ? 'SharePointのhttpsリンクを貼り付けてください。' : '';
-      if (valid) {
+      const url = parseSharePointUrl(input.value);
+      excelLink.hidden = !url;
+      message.textContent = input.value && !url ? 'SharePointのhttpsリンクを貼り付けてください。' : '';
+      if (url) {
         excelLink.href = `ms-excel:ofe|u|${url.href}`;
-        const browserUrl = new URL(url.href);
-        browserUrl.searchParams.set('web', '1');
-        browserLink.href = browserUrl.href;
       }
+    });
+    portalInput.addEventListener('input', () => {
+      const url = parseSharePointUrl(portalInput.value);
+      browserLink.hidden = !url;
+      portalMessage.textContent = portalInput.value && !url ? 'ポータルの資料ボタンからコピーしたSharePointのhttpsリンクを貼り付けてください。' : '';
+      if (url) browserLink.href = url.href;
     });
   </script>
 </body>
