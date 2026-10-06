@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     app_name: str = "Machine Document Portal"
     app_env: str = "development"
     app_port: int = Field(default=8000, ge=1, le=65535)
+    app_version: str = "1.0"
+    app_data_dir: Path | None = None
     debug: bool = False
     use_sample_data: bool = True
     persistence_mode: Literal["memory", "postgresql"] = "memory"
@@ -74,6 +76,16 @@ class Settings(BaseSettings):
     log_max_bytes: int = Field(default=5_242_880, ge=1024)
     log_backup_count: int = Field(default=5, ge=1)
     sample_data_path: Path = PROJECT_ROOT / "sample_data" / "machines.json"
+
+    @field_validator("app_data_dir", mode="before")
+    @classmethod
+    def empty_data_dir(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @property
+    def monitoring_dir(self) -> Path:
+        directory = self.app_data_dir or self.log_dir
+        return (PROJECT_ROOT / directory).resolve()
 
     @field_validator("debug", mode="before")
     @classmethod

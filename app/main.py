@@ -4,7 +4,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from app.config import PROJECT_ROOT, get_settings
 from app.database.session import get_database_manager
@@ -16,6 +18,7 @@ from app.scheduling import (
 )
 from app.services.google_sheets_memory_sync_service import GoogleSheetsMemorySyncService
 from app.services.memory_store import get_memory_store
+from app.services.monitoring import Monitoring, is_monitoring_or_static
 from app.utils.logging_config import configure_logging
 
 
@@ -23,6 +26,8 @@ from app.utils.logging_config import configure_logging
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings)
+    app.state.monitoring = Monitoring(settings)
+    app.state.monitoring.payload()
     logger = logging.getLogger(__name__)
     logger.info(
         "Application started: environment=%s sample_mode=%s",
@@ -39,7 +44,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 result.error_count,
             )
         else:
-            logger.error("Initial Google Sheets synchronization failed: %s", result.message)
+            logger.error(
+                "Initial Google Sheets synchronization failed: %s", result.message
+            )
         if settings.auto_refresh_seconds > 0:
             background_tasks.append(create_task(refresh_google_sheets_periodically()))
         if settings.document_refresh_schedule:
@@ -74,6 +81,37 @@ def create_app() -> FastAPI:
         )
     application.include_router(pages.router)
     application.include_router(api.router)
+
+    @application.get("/health", include_in_schema=False)
+    @application.get("/health/", include_in_schema=False)
+    async def health():
+        payload = application.state.monitoring.payload()
+        return JSONResponse(
+            payload, status_code=200 if payload["status"] == "ok" else 503
+        )
+
+    @application.middleware("http")
+    async def record_access(request, call_next):
+        if is_monitoring_or_static(request.url.path):
+            return await call_next(request)
+        await run_in_threadpool(application.state.monitoring.increment)
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        except Exception:
+            logging.getLogger(__name__).exception("Request failed")
+            raise
+        finally:
+            logging.getLogger(__name__).info(
+                '%s "%s %s" %s',
+                request.client.host if request.client else "-",
+                request.method,
+                request.url.path,
+                status_code,
+            )
+
     return application
 
 

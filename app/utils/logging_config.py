@@ -5,13 +5,13 @@ from app.config import Settings
 
 
 def configure_logging(settings: Settings) -> None:
-    settings.log_dir.mkdir(parents=True, exist_ok=True)
+    settings.monitoring_dir.mkdir(parents=True, exist_ok=True)
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     file_handler = RotatingFileHandler(
-        settings.log_dir / "machine_document_portal.log",
+        settings.monitoring_dir / "app.log",
         maxBytes=settings.log_max_bytes,
         backupCount=settings.log_backup_count,
         encoding="utf-8",
@@ -22,6 +22,11 @@ def configure_logging(settings: Settings) -> None:
 
     root_logger = logging.getLogger()
     root_logger.setLevel(settings.log_level.upper())
-    root_logger.handlers.clear()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        handler.close()
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
+    # HTTP client INFO logs contain full URLs (including query credentials).
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
